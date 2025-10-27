@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Autokey Cipher — Crypto Lab</title>
+<meta name="color-scheme" content="dark light" />
+<style>
+/* =================== THEME TOKENS =================== */
+:root{
+  --bg:#0b1020; --panel:#0f172ae6; --glass:#0f172ab3; --card:#0c1428f2;
+  --border:#1e2946; --fg:#eaf2ff; --muted:#9fb0c9;
+  --p1:#8b5cf6; --p2:#06b6d4; --danger:#ef4444;
+  --titleA:#eef2ff; --titleB:#8bbcff; --titleC:#67e8f9;
+  --shadow:0 18px 50px rgba(0,0,0,.45);
+  --r-lg:22px; --r-md:14px; --space: clamp(12px,2.4vw,20px);
+}
+.light{
+  --bg:#f6f8fc; --panel:#ffffffef; --glass:#ffffffcc; --card:#fffffff2;
+  --border:#d9e1ef; --fg:#0b1020; --muted:#475569;
+  --p1:#6d28d9; --p2:#0ea5e9; --danger:#dc2626;
+  --titleA:#0e172a; --titleB:#24507a; --titleC:#0ea5e9;
+  --shadow:0 18px 50px rgba(20,30,50,.12);
+}
+
+/* =================== RESET & BASE =================== */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; color:var(--fg);
+  font:16px/1.7 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  background:var(--bg);
+}
+a{color:inherit; text-decoration:none}
+button{font:inherit; cursor:pointer}
+
+/* =================== BACKDROP & CURSOR =================== */
+.aurora{
+  position:fixed; inset:-12vmax; z-index:-3; pointer-events:none; filter:blur(60px); opacity:.9;
+  background:
+    radial-gradient(42vmax 32vmax at 8% 12%, #5b21b6 0%, transparent 60%),
+    radial-gradient(40vmax 30vmax at 90% 12%, #0ea5e9 0%, transparent 60%),
+    radial-gradient(38vmax 36vmax at 50% 90%, #22c55e 0%, transparent 65%);
+  animation: aurora 26s ease-in-out infinite alternate;
+}
+.light .aurora{opacity:.66}
+@keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(2vw,-2vh,0) scale(1.03)}}
+@media (prefers-reduced-motion: reduce){ .aurora{animation:none} }
+
+.cursor{
+  position:fixed; top:0; left:0; width:26px; height:26px; border-radius:50%;
+  border:2px solid var(--p2); pointer-events:none; z-index:9999; mix-blend-mode:screen; opacity:.6; transform:translate(-50%,-50%);
+  transition: border-color .2s ease, box-shadow .2s ease, width .15s ease, height .15s ease;
+}
+.cursor.big{ width:44px; height:44px; border-width:2px; box-shadow:0 0 26px var(--p2) }
+@media (pointer: coarse){ .cursor{display:none} }
+
+/* =================== NAV =================== */
+.nav{
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
+  gap:10px; padding:10px var(--space);
+  background:linear-gradient(to bottom, var(--panel), transparent);
+  border-bottom:1px solid var(--border); backdrop-filter:blur(10px)
+}
+.brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px}
+.logo{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
+  background:conic-gradient(from 0deg, var(--p1), var(--p2), #60a5fa, var(--p1))}
+.links{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.chip{padding:8px 12px; border:1px solid var(--border); border-radius:999px; background:var(--glass)}
+.chip:hover{border-color:#ffffff66}
+.theme{padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:var(--glass)}
+
+/* =================== BREADCRUMB =================== */
+.crumbs{
+  display:flex; gap:8px; align-items:center; width:100%;
+  max-width:min(1160px, 92vw); margin:8px auto 0; padding:0 var(--space);
+  color:var(--muted); font-size:.95rem;
+}
+.crumbs a{padding:6px 10px; border:1px solid var(--border); border-radius:999px; background:var(--glass)}
+.crumbs span{opacity:.7}
+
+/* =================== CONTAINER =================== */
+.container{max-width:min(1160px, 92vw); margin:0 auto; padding:16px var(--space) 90px}
+.title{
+  margin:8px 0 8px; font-weight:900; letter-spacing:.2px; line-height:1.06;
+  font-size: clamp(26px, 4.6vw, 48px);
+  background: linear-gradient(92deg, var(--titleA), var(--titleB), var(--titleC));
+  -webkit-background-clip:text; background-clip:text; color:transparent; text-wrap:balance;
+}
+.subtitle{margin:0; color:var(--muted); max-width:80ch}
+
+/* =================== CARDS & FORMS =================== */
+.card{
+  position:relative; overflow:hidden; border-radius:var(--r-lg); padding:16px;
+  border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow);
+}
+.sectionTitle{margin:10px 0 6px; font-weight:800}
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:980px){ .grid-2{grid-template-columns:1fr} }
+
+.row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.field{flex:1 1 260px; min-width:240px}
+label{font-weight:600}
+input[type="text"], input[type="number"], input[type="file"], textarea, select{
+  width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.02);
+  color:var(--fg); outline:none; transition:border-color .2s ease, box-shadow .2s ease
+}
+input:focus, textarea:focus, select:focus{border-color:#93c5fd; box-shadow:0 0 0 3px rgba(147,197,253,.25)}
+textarea{min-height:160px; resize:vertical}
+.small{font-size:.92rem; color:var(--muted)}
+.kbd{font:500 13px/1 ui-monospace, Menlo, Consolas, monospace; background:#0b1220; color:#e5e7eb; padding:2px 6px; border-radius:6px; border:1px solid #334155}
+.light .kbd{background:#eef2f7; color:#0b1020; border-color:#cbd5e1}
+
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:10px 14px; border-radius:12px; border:0; color:#fff;
+  background:linear-gradient(135deg, var(--p1), var(--p2)); box-shadow:var(--shadow); transition: transform .15s ease, filter .15s ease}
+.btn:hover{transform:translateY(-1px); filter:brightness(1.06)}
+.btn.ghost{background:var(--glass); color:var(--fg); border:1px solid var(--border)}
+.btn.danger{background:var(--danger)}
+.tools{display:flex; gap:8px; flex-wrap:wrap}
+.copy{position:absolute; top:10px; right:10px}
+
+.out{background:#00000010}
+
+/* progress */
+progress{width:100%; height:10px; appearance:none; -webkit-appearance:none}
+progress::-webkit-progress-bar{background:#0b1220; border-radius:999px}
+progress::-webkit-progress-value{background:linear-gradient(90deg, var(--p2), #60a5fa); border-radius:999px}
+.light progress::-webkit-progress-bar{background:#eef2f7}
+
+/* tabel langkah */
+.tableWrap{overflow:auto; border:1px solid var(--border); border-radius:12px; background:var(--glass); margin-top:10px}
+table{width:100%; border-collapse:collapse; font-size:.95rem}
+th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
+tr:nth-child(even){background-color:#ffffff08}
+.light tr:nth-child(even){background-color:#00000006}
+
+footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95rem}
+</style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M7 10V7a5 5 0 0 1 10 0v3" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <rect x="5" y="10" width="14" height="10" rx="2" stroke="white" stroke-opacity=".9" stroke-width="2"/>
+        </svg>
+      </div>
+      <strong>Crypto Lab</strong>
+    </div>
+    <div class="links">
+      <a class="chip" href="index.html">🏠 Dashboard</a>
+      <a class="chip" href="autokey.html" aria-current="page">Autokey</a>
+      <a class="chip" href="affine.html">Affine</a>
+      <button id="theme" class="theme" aria-label="Ganti tema" aria-pressed="false">🌓 Tema</button>
+    </div>
+  </nav>
+
+  <!-- BREADCRUMB -->
+  <div class="crumbs" role="navigation" aria-label="Breadcrumb">
+    <a href="index.html">Dashboard</a><span>›</span><span>Autokey</span>
+  </div>
+
+  <main class="container">
+    <h1 class="title">Autokey Cipher</h1>
+    <p class="subtitle">Dukungan <b>Teks (A–Z)</b> dan <b>Berkas (byte 0–255)</b>. Tersedia opsi mempertahankan spasi/tanda baca serta tabel langkah.</p>
+
+    <!-- ================= TEXT MODE ================= -->
+    <section id="text" class="card" style="margin-top:12px">
+      <h2 class="sectionTitle">Teks (A–Z)</h2>
+
+      <div class="row" style="margin-bottom:8px">
+        <div class="field">
+          <label for="keyTxt">Kunci (huruf):</label>
+          <input id="keyTxt" type="text" placeholder="mis. KEYWORD" autocomplete="off" />
+          <div class="small">Hanya huruf A–Z dipakai (dinormalisasi ke UPPERCASE).</div>
+        </div>
+        <label class="row" style="gap:8px"><input id="keepNon" type="checkbox" checked /> <span>Pertahankan spasi & tanda baca</span></label>
+        <label class="row" style="gap:8px"><input id="showSteps" type="checkbox" /> <span>Tampilkan tabel langkah</span></label>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label for="plainTxt">Pesan (plaintext / ciphertext):</label>
+          <textarea id="plainTxt" placeholder="Tulis teks di sini..."></textarea>
+          <div class="tools" style="margin-top:8px">
+            <button class="btn ghost" id="cleanAZ" data-magnet>Bersihkan → A–Z</button>
+            <button class="btn" id="encTxt" data-magnet>Enkripsi Teks</button>
+            <button class="btn" id="decTxt" data-magnet>Dekripsi Teks</button>
+            <button class="btn danger" id="clrTxt">Bersihkan Kolom</button>
+          </div>
+        </div>
+
+        <div style="position:relative">
+          <label for="outTxt">Hasil:</label>
+          <textarea id="outTxt" class="out" readonly placeholder="Hasil akan muncul di sini..."></textarea>
+          <button class="btn ghost copy" id="copyTxt" title="Salin">Salin</button>
+        </div>
+      </div>
+
+      <div id="stepsWrap" class="tableWrap" style="display:none">
+        <table id="stepsTbl">
+          <thead>
+            <tr><th>#</th><th>P[i]</th><th>Keystream[i]</th><th>Shift</th><th>Operasi</th><th>Hasil</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= FILE MODE ================= -->
+    <section id="file" class="card" style="margin-top:14px">
+      <h2 class="sectionTitle">Berkas (Byte-Safe)</h2>
+      <p class="small">Keystream = <i>[keyByte]</i> ∥ <i>plaintext-bytes</i>. Enkripsi: <code>C[i]=(P[i]+K[i]) mod 256</code>. Dekripsi: <code>P[i]=(C[i]-K[i]) mod 256</code> (saat dekripsi, <i>K[i&gt;0]</i> dari byte plaintext yang baru dipulihkan).</p>
+
+      <div class="row">
+        <div class="field" style="max-width:240px">
+          <label for="keyFile">Key Byte (0–255):</label>
+          <input id="keyFile" type="number" min="0" max="255" value="19" />
+        </div>
+        <div class="field">
+          <label for="fileIn">Pilih berkas:</label>
+          <input id="fileIn" type="file" />
+        </div>
+      </div>
+
+      <div class="tools" style="margin-top:8px">
+        <button class="btn" id="encFile" data-magnet>Enkripsi Berkas</button>
+        <button class="btn" id="decFile" data-magnet>Dekripsi Berkas</button>
+        <button class="btn danger" id="clrFile">Reset</button>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <progress id="prog" value="0" max="100" aria-label="Progres"></progress>
+        <span class="small" id="stat" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- ================= DOKUMENTASI ================= -->
+    <section id="docs" class="card" style="margin-top:14px">
+      <h2 class="sectionTitle">Dokumentasi & Cara Kerja</h2>
+
+      <h3>1) Mode Teks (A–Z)</h3>
+      <p>Autokey memakai <b>keystream</b> yang diawali <b>keyword</b> lalu disambung <b>plaintext</b>. Mapping huruf: A=0 … Z=25. Normalisasi ke UPPERCASE.</p>
+      <p>Enkripsi: <code>C[i]=(P[i]+K[i]) mod 26</code>, di mana <i>K</i> dibentuk dari keyword lalu huruf plaintext yang telah diproses. Dekripsi: <code>P[i]=(C[i]-K[i]) mod 26</code>, saat dekripsi <i>K</i> setelah awal berasal dari plaintext yang baru dipulihkan.</p>
+      <p class="small"><b>Contoh singkat</b> — Kunci: <code>KEY</code>, Plaintext: <code>HELLO</code> → Keystream: <code>KEYHE</code> → Huruf pertama: <code>H(7)+K(10)=17 → R</code>.</p>
+
+      <h3>2) Mode Berkas (Byte-Safe)</h3>
+      <p>Alfabet byte 0..255. Keystream: byte kunci awal diikuti byte plaintext. Enkripsi byte-per-byte: <code>C=(P+K) mod 256</code>; Dekripsi: <code>P=(C−K) mod 256</code> dengan <i>K</i> setelah awal diambil dari plaintext yang dipulihkan.</p>
+
+      <p class="small"><b>Catatan:</b> Autokey bersifat edukatif (kriptografi klasik). Untuk data sensitif gunakan AES/ChaCha20.</p>
+    </section>
+
+    <footer>© 2025 Crypto Lab • Autokey • Tema Prism Forge • Kontras aman & responsif.</footer>
+  </main>
+
+<script>
+/* ================= THEME ================= */
+const root=document.documentElement, themeBtn=document.getElementById('theme');
+const metaScheme=document.querySelector('meta[name="color-scheme"]');
+const saved=localStorage.getItem('cl-theme');
+if(saved==='light'){ root.classList.add('light'); themeBtn.setAttribute('aria-pressed','true'); }
+metaScheme.setAttribute('content', root.classList.contains('light')?'light dark':'dark light');
+themeBtn.onclick=()=>{
+  root.classList.toggle('light');
+  const light=root.classList.contains('light');
+  localStorage.setItem('cl-theme', light?'light':'dark');
+  themeBtn.setAttribute('aria-pressed', String(light));
+  metaScheme.setAttribute('content', light?'light dark':'dark light');
+};
+
+/* ================= CURSOR RING ================= */
+const ring=document.getElementById('cursor');
+let rx=0, ry=0, tx=0, ty=0;
+addEventListener('pointermove', e=>{ tx=e.clientX; ty=e.clientY; }, {passive:true});
+function tick(){ rx+=(tx-rx)*0.18; ry+=(ty-ry)*0.18; ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`; requestAnimationFrame(tick); }
+if(!matchMedia('(pointer: coarse)').matches){ tick(); }
+function setRingBig(on){ ring.classList.toggle('big', on); }
+document.querySelectorAll('a, .btn, .card, input, textarea, select, label').forEach(el=>{
+  el.addEventListener('pointerenter', ()=>setRingBig(true));
+  el.addEventListener('pointerleave', ()=>setRingBig(false));
+});
+
+/* ================== AUTOKEY (TEKS) ================== */
+const keyTxt = document.getElementById('keyTxt');
+const keepNon = document.getElementById('keepNon');
+const showSteps = document.getElementById('showSteps');
+const plainTxt = document.getElementById('plainTxt');
+const outTxt = document.getElementById('outTxt');
+const stepsWrap = document.getElementById('stepsWrap');
+const stepsTblBody = document.querySelector('#stepsTbl tbody');
+
+function onlyAZ(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,''); }
+function isLetter(ch){ return /^[A-Za-z]$/.test(ch); }
+function A(ord){ return ord.charCodeAt(0)-65; }
+function Z(i){ return String.fromCharCode((i%26+26)%26 + 65); }
+
+function encryptText(){
+  const K = onlyAZ(keyTxt.value);
+  if(!K){ alert('Masukkan kunci huruf (A–Z).'); return; }
+  const src = plainTxt.value || '';
+  const keep = keepNon.checked;
+
+  let result = '';
+  let ks = K.split('');                // keystream dinamis = keyword + plaintext berjalan
+  stepsTblBody.innerHTML='';
+  let ki = 0;                          // index keystream (hanya untuk huruf)
+  let processedPlainLetters = '';
+
+  for(let i=0;i<src.length;i++){
+    const ch = src[i];
+    if(isLetter(ch)){
+      const p = A(ch.toUpperCase());
+      const k = ki < ks.length ? A(ks[ki].toUpperCase()) : A(processedPlainLetters.slice(-1) || 'A');
+      const c = (p + k) % 26;
+      const outCh = (ch === ch.toLowerCase()) ? Z(c).toLowerCase() : Z(c);
+
+      result += outCh;
+      processedPlainLetters += ch.toUpperCase();
+      if(ki >= ks.length) ks.push( processedPlainLetters.slice(-1) ); // sambung plaintext
+      ki++;
+
+      if(showSteps.checked){
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${ki}</td><td>${Z(p)}</td><td>${Z(k)}</td><td>+${k}</td><td>(P+K) mod 26</td><td>${Z(c)}</td>`;
+        stepsTblBody.appendChild(tr);
+      }
+    }else{
+      if(keep){ result += ch; } // pass-through
+    }
+  }
+  outTxt.value = result;
+  stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
+}
+
+function decryptText(){
+  const K = onlyAZ(keyTxt.value);
+  if(!K){ alert('Masukkan kunci huruf (A–Z).'); return; }
+  const src = plainTxt.value || '';
+  const keep = keepNon.checked;
+
+  let result = '';
+  let ks = K.split('');                // saat dekripsi, sambung plaintext yang dipulihkan
+  stepsTblBody.innerHTML='';
+  let ki = 0;
+
+  for(let i=0;i<src.length;i++){
+    const ch = src[i];
+    if(isLetter(ch)){
+      const c = A(ch.toUpperCase());
+      const k = ki < ks.length ? A(ks[ki].toUpperCase()) : A(result.slice(-1).toUpperCase() || 'A');
+      const p = (c - k + 26) % 26;
+      const outCh = (ch === ch.toLowerCase()) ? Z(p).toLowerCase() : Z(p);
+
+      result += outCh;
+      if(ki >= ks.length) ks.push( Z(p) ); // tambahkan plaintext yang dipulihkan
+      ki++;
+
+      if(showSteps.checked){
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${ki}</td><td>${Z(p)}</td><td>${Z(k)}</td><td>−${k}</td><td>(C−K) mod 26</td><td>${Z(p)}</td>`;
+        stepsTblBody.appendChild(tr);
+      }
+    }else{
+      if(keep){ result += ch; }
+    }
+  }
+  outTxt.value = result;
+  stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
+}
+
+/* Buttons (text) */
+document.getElementById('encTxt').onclick = encryptText;
+document.getElementById('decTxt').onclick = decryptText;
+document.getElementById('cleanAZ').onclick = ()=>{ plainTxt.value = onlyAZ(plainTxt.value); };
+document.getElementById('clrTxt').onclick = ()=>{
+  plainTxt.value=''; outTxt.value=''; stepsTblBody.innerHTML=''; stepsWrap.style.display='none';
+};
+document.getElementById('copyTxt').onclick = ()=>{
+  navigator.clipboard.writeText(outTxt.value||'').then(()=>{
+    const b=document.getElementById('copyTxt'); const old=b.textContent; b.textContent='Disalin!';
+    setTimeout(()=>b.textContent=old, 900);
+  });
+};
+showSteps.onchange = ()=>{ stepsWrap.style.display = showSteps.checked ? 'block' : 'none'; };
+
+/* ================== AUTOKEY (BERKAS / BYTE) ================== */
+const keyFile = document.getElementById('keyFile');
+const fileIn  = document.getElementById('fileIn');
+const prog    = document.getElementById('prog');
+const stat    = document.getElementById('stat');
+
+function readFileAsArrayBuffer(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onerror = ()=>reject(fr.error);
+    fr.onload  = ()=>resolve(fr.result);
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+function processBytesAutokey(buf, keyByte, mode /* 'enc' | 'dec' */){
+  const src = new Uint8Array(buf);
+  const dst = new Uint8Array(src.length);
+  let k = keyByte & 0xff;
+
+  if(mode==='enc'){
+    for(let i=0;i<src.length;i++){
+      dst[i] = (src[i] + k) & 0xff;
+      k = src[i]; // next keystream dari plaintext
+      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
+    }
+  }else{ // dec
+    for(let i=0;i<src.length;i++){
+      const p = (src[i] - k + 256) & 0xff;
+      dst[i] = p;
+      k = p; // keystream dari plaintext yang dipulihkan
+      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
+    }
+  }
+  prog.value = 100;
+  return dst;
+}
+
+function downloadBytes(bytes, name){
+  const blob = new Blob([bytes], {type:'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+async function handleFile(mode){
+  const f = fileIn.files?.[0];
+  if(!f){ alert('Pilih berkas terlebih dahulu.'); return; }
+  const k = Number(keyFile.value);
+  if(!(Number.isInteger(k) && k>=0 && k<=255)){ alert('Key Byte harus 0–255.'); return; }
+
+  prog.value = 0; stat.textContent = (mode==='enc'?'Enkripsi':'Dekripsi')+' berjalan…';
+  const buf = await readFileAsArrayBuffer(f);
+  const out = processBytesAutokey(buf, k, mode);
+  const suffix = mode==='enc' ? '.autokey.enc' : '.autokey.dec';
+  const name = (f.name||'file') + suffix;
+  downloadBytes(out, name);
+  stat.textContent = 'Selesai: '+name;
+}
+
+document.getElementById('encFile').onclick = ()=>handleFile('enc');
+document.getElementById('decFile').onclick = ()=>handleFile('dec');
+document.getElementById('clrFile').onclick = ()=>{
+  fileIn.value=''; prog.value=0; stat.textContent='';
+};
+
+/* ================= SHORTCUTS ================= */
+addEventListener('keydown',(e)=>{
+  const tag=(e.target||{}).tagName; if(tag==='INPUT'||tag==='TEXTAREA') return;
+  const k=e.key.toLowerCase();
+  if(k==='i') location.href='index.html';
+  if(k==='f') location.href='affine.html';
+});
+</script>
+</body>
+</html>
