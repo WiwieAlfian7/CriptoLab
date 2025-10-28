@@ -155,7 +155,7 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
     <div class="links">
       <a class="chip" href="index.html">🏠 Dashboard</a>
       <a class="chip" href="autokey.html" aria-current="page">Autokey</a>
-      <a class="chip" href="affine.html">Affine</a>
+      <a class="chip" href="keyword.html">Keyword</a>
       <button id="theme" class="theme" aria-label="Ganti tema" aria-pressed="false">🌓 Tema</button>
     </div>
   </nav>
@@ -461,7 +461,7 @@ addEventListener('keydown',(e)=>{
   const tag=(e.target||{}).tagName; if(tag==='INPUT'||tag==='TEXTAREA') return;
   const k=e.key.toLowerCase();
   if(k==='i') location.href='index.html';
-  if(k==='f') location.href='affine.html';
+  if(k==='k') location.href='keyword.html';
 });
 </script>
 </body>

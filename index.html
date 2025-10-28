@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Crypto Lab — Autokey & Affine</title>
+<title>Crypto Lab — Autokey & Keyword</title>
 <meta name="color-scheme" content="dark light" />
 <style>
 /* =================== THEME TOKENS (kontras aman) =================== */
@@ -192,7 +192,7 @@ footer{margin:46px 0 12px; text-align:center; color:var(--muted); font-size:.95r
     </div>
     <div class="links">
       <a class="chip" href="autokey.html">Autokey</a>
-      <a class="chip" href="affine.html">Affine</a>
+      <a class="chip" href="keyword.html">Keyword</a>
       <button id="theme" class="theme" aria-label="Ganti tema" aria-pressed="false">🌓 Tema</button>
     </div>
   </nav>
@@ -205,14 +205,14 @@ footer{margin:46px 0 12px; text-align:center; color:var(--muted); font-size:.95r
       <div class="reveal">
         <h1 class="title">Kriptografi klasik. Fokus ke praktik.</h1>
         <p class="subtitle">
-          Dua alat utama: <b>Autokey</b> dan <b>Affine</b>. Masukkan kunci, ketik pesan atau unggah berkas, lalu proses.
+          Dua alat utama: <b>Autokey</b> dan <b>Keyword Cipher</b>. Masukkan kunci, ketik pesan atau unggah berkas, lalu proses.
           Tiap halaman menyediakan tabel langkah agar hitungannya mudah diikuti.
         </p>
         <div class="cta" id="magnet">
           <a class="btn" href="autokey.html" data-magnet>Mulai Autokey</a>
-          <a class="btn ghost" href="affine.html" data-magnet>Coba Affine</a>
+          <a class="btn ghost" href="keyword.html" data-magnet>Coba Keyword Cipher</a>
         </div>
-        <p class="note">Shortcut: <span class="kbd">A</span> (Autokey) • <span class="kbd">F</span> (Affine)</p>
+        <p class="note">Shortcut: <span class="kbd">A</span> (Autokey) • <span class="kbd">K</span> (Keyword)</p>
       </div>
 
       <!-- 3D STAGE -->
@@ -239,10 +239,10 @@ footer{margin:46px 0 12px; text-align:center; color:var(--muted); font-size:.95r
         <div class="btn ghost" data-magnet>Buka ↗</div>
       </a>
 
-      <a class="card reveal shine" href="affine.html">
-        <span class="pill">Affine</span>
-        <h3>Rumus Linear</h3>
-        <p>Gunakan <code>(a·x + b) mod m</code> untuk teks; untuk berkas gunakan variasi byte-safe. Mudah diuji manual maupun web.</p>
+      <a class="card reveal shine" href="keyword.html">
+        <span class="pill">Keyword</span>
+        <h3>Alfabet Berbasis Kata Kunci</h3>
+        <p>Susun alfabet substitusi dari <b>keyword</b> (hapus duplikat) lalu isi sisa A–Z. Sederhana, efektif untuk demo substitusi.</p>
         <div class="btn ghost" data-magnet>Buka ↗</div>
       </a>
     </section>
@@ -250,10 +250,10 @@ footer{margin:46px 0 12px; text-align:center; color:var(--muted); font-size:.95r
     <!-- LANGKAH SINGKAT -->
     <h2 class="sectionTitle reveal">Cara cepat</h2>
     <section class="steps">
-      <div class="step reveal"><div class="pill">1</div><h4>Pilih mode</h4><p class="note">Autokey atau Affine.</p></div>
-      <div class="step reveal"><div class="pill">2</div><h4>Isi kunci</h4><p class="note">Autokey: keyword. Affine: <b>a</b> & <b>b</b> (teks) / <b>a</b> & <b>c</b> (file).</p></div>
-      <div class="step reveal"><div class="pill">3</div><h4>Masukkan data</h4><p class="note">Tulis pesan atau unggah berkas.</p></div>
-      <div class="step reveal"><div class="pill">4</div><h4>Proses</h4><p class="note">Enkripsi/Dekripsi. Tampilkan tabel langkah jika butuh penjelasan.</p></div>
+      <div class="step reveal"><div class="pill">1</div><h4>Pilih mode</h4><p class="note">Autokey atau Keyword.</p></div>
+      <div class="step reveal"><div class="pill">2</div><h4>Isi kunci</h4><p class="note">Autokey: keyword awal. Keyword: kata kunci untuk susun alfabet.</p></div>
+      <div class="step reveal"><div class="pill">3</div><h4>Masukkan data</h4><p class="note">Tulis pesan atau unggah berkas (khusus Autokey Byte).</p></div>
+      <div class="step reveal"><div class="pill">4</div><h4>Proses</h4><p class="note">Enkripsi/Dekripsi. Nyalakan tabel langkah untuk penjelasan.</p></div>
     </section>
 
     <footer>© 2025 Crypto Lab • Prism Forge UI • Dark/Light kontras aman.</footer>
@@ -281,12 +281,14 @@ document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 /* ================= SHORTCUTS ================= */
 addEventListener('keydown',(e)=>{
   const tag=(e.target||{}).tagName; if(tag==='INPUT'||tag==='TEXTAREA') return;
-  const k=e.key.toLowerCase(); if(k==='a') location.href='autokey.html'; if(k==='f') location.href='affine.html';
+  const k=e.key.toLowerCase();
+  if(k==='a') location.href='autokey.html';
+  if(k==='k') location.href='keyword.html';
 });
 
 /* ================= CURSOR RING (smooth + magnet) ================= */
 const ring=document.getElementById('cursor');
-let rx=0, ry=0, tx=0, ty=0, bigCount=0;
+let rx=0, ry=0, tx=0, ty=0;
 addEventListener('pointermove', e=>{ tx=e.clientX; ty=e.clientY; }, {passive:true});
 function tick(){
   rx += (tx - rx) * 0.18; ry += (ty - ry) * 0.18;

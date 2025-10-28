@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Affine Cipher — Crypto Lab</title>
+<title>Keyword Cipher — Crypto Lab</title>
 <meta name="color-scheme" content="dark light" />
 <style>
 /* =================== THEME TOKENS =================== */
@@ -99,9 +99,9 @@ button{font:inherit; cursor:pointer}
 @media (max-width:980px){ .grid-2{grid-template-columns:1fr} }
 
 .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-.field{flex:1 1 240px; min-width:200px}
+.field{flex:1 1 260px; min-width:240px}
 label{font-weight:600}
-input[type="text"], input[type="number"], input[type="file"], textarea, select{
+input[type="text"], textarea, select{
   width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.02);
   color:var(--fg); outline:none; transition:border-color .2s ease, box-shadow .2s ease
 }
@@ -121,16 +121,10 @@ textarea{min-height:160px; resize:vertical}
 
 .out{background:#00000010}
 
-/* progress */
-progress{width:100%; height:10px; appearance:none; -webkit-appearance:none}
-progress::-webkit-progress-bar{background:#0b1220; border-radius:999px}
-progress::-webkit-progress-value{background:linear-gradient(90deg, var(--p2), #60a5fa); border-radius:999px}
-.light progress::-webkit-progress-bar{background:#eef2f7}
-
 /* tabel langkah */
 .tableWrap{overflow:auto; border:1px solid var(--border); border-radius:12px; background:var(--glass); margin-top:10px}
 table{width:100%; border-collapse:collapse; font-size:.95rem}
-th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
+th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap}
 tr:nth-child(even){background-color:#ffffff08}
 .light tr:nth-child(even){background-color:#00000006}
 
@@ -155,35 +149,30 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
     <div class="links">
       <a class="chip" href="index.html">🏠 Dashboard</a>
       <a class="chip" href="autokey.html">Autokey</a>
-      <a class="chip" href="affine.html" aria-current="page">Affine</a>
+      <a class="chip" href="affine.html">Affine</a>
+      <a class="chip" href="keyword.html" aria-current="page">Keyword</a>
       <button id="theme" class="theme" aria-label="Ganti tema" aria-pressed="false">🌓 Tema</button>
     </div>
   </nav>
 
   <!-- BREADCRUMB -->
   <div class="crumbs" role="navigation" aria-label="Breadcrumb">
-    <a href="index.html">Dashboard</a><span>›</span><span>Affine</span>
+    <a href="index.html">Dashboard</a><span>›</span><span>Keyword</span>
   </div>
 
   <main class="container">
-    <h1 class="title">Affine Cipher</h1>
-    <p class="subtitle">Mode <b>Teks (A–Z)</b> dengan modulus 26 dan <b>Berkas (byte)</b> dengan modulus 256. Pastikan <b>a</b> memiliki invers modulo (gcd(a,m)=1).</p>
+    <h1 class="title">Keyword Cipher</h1>
+    <p class="subtitle">Mode <b>Teks (A–Z)</b> dengan substitusi monoalfabetis berbasis <b>keyword</b>. Non huruf bisa dipertahankan.</p>
 
     <!-- ================= TEXT MODE ================= -->
     <section id="text" class="card" style="margin-top:12px">
       <h2 class="sectionTitle">Teks (A–Z)</h2>
 
       <div class="row" style="margin-bottom:8px">
-        <div class="field" style="max-width:200px">
-          <label for="aTxt">a (gcd(a,26)=1):</label>
-          <input id="aTxt" type="number" min="1" max="25" value="5" />
-          <div class="small">Nilai valid: 1,3,5,7,9,11,15,17,19,21,23,25.</div>
-        </div>
-        <div class="field" style="max-width:200px">
-          <label for="bTxt">b (0–25):</label>
-          <input id="bTxt" type="number" min="0" max="25" value="8" />
-          <div class="small">Nilai valid:</div>
-          <div class="small">1-25.</div>
+        <div class="field">
+          <label for="keyTxt">Keyword (huruf):</label>
+          <input id="keyTxt" type="text" placeholder="mis. SECURITY" autocomplete="off" />
+          <div class="small">Hanya huruf A–Z dipakai (dinormalisasi ke UPPERCASE dan dihapus duplikasi).</div>
         </div>
         <label class="row" style="gap:8px"><input id="keepNon" type="checkbox" checked /> <span>Pertahankan spasi & tanda baca</span></label>
         <label class="row" style="gap:8px"><input id="showSteps" type="checkbox" /> <span>Tampilkan tabel langkah</span></label>
@@ -208,45 +197,24 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
         </div>
       </div>
 
-      <div id="stepsWrap" class="tableWrap" style="display:none">
+      <div class="tableWrap" id="mapWrap" style="margin-top:10px">
+        <table>
+          <thead>
+            <tr><th>Plain</th><th id="plainRow"></th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Cipher (dari keyword)</td><td id="cipherRow"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="stepsWrap" class="tableWrap" style="display:none; margin-top:10px">
         <table id="stepsTbl">
           <thead>
-            <tr><th>#</th><th>Masukan</th><th>a</th><th>b</th><th>Operasi</th><th>Hasil</th></tr>
+            <tr><th>#</th><th>Input[i]</th><th>Peta</th><th>Operasi</th><th>Output</th></tr>
           </thead>
           <tbody></tbody>
         </table>
-      </div>
-    </section>
-
-    <!-- ================= FILE MODE ================= -->
-    <section id="file" class="card" style="margin-top:14px">
-      <h2 class="sectionTitle">Berkas (Byte-Safe)</h2>
-      <p class="small">Modulus <b>256</b>. Syarat: <b>a</b> relatif prima dengan 256 → pilih <b>a</b> ganjil. Enkripsi: <code>C=(a·P+b) mod 256</code> • Dekripsi: <code>P=a⁻¹·(C−b) mod 256</code>.</p>
-
-      <div class="row">
-        <div class="field" style="max-width:240px">
-          <label for="aFile">a (ganjil 1–255):</label>
-          <input id="aFile" type="number" min="1" max="255" value="5" />
-        </div>
-        <div class="field" style="max-width:240px">
-          <label for="bFile">b (0–255):</label>
-          <input id="bFile" type="number" min="0" max="255" value="8" />
-        </div>
-        <div class="field">
-          <label for="fileIn">Pilih berkas:</label>
-          <input id="fileIn" type="file" />
-        </div>
-      </div>
-
-      <div class="tools" style="margin-top:8px">
-        <button class="btn" id="encFile" data-magnet>Enkripsi Berkas</button>
-        <button class="btn" id="decFile" data-magnet>Dekripsi Berkas</button>
-        <button class="btn danger" id="clrFile">Reset</button>
-      </div>
-
-      <div class="row" style="margin-top:8px">
-        <progress id="prog" value="0" max="100" aria-label="Progres"></progress>
-        <span class="small" id="stat" aria-live="polite"></span>
       </div>
     </section>
 
@@ -254,16 +222,13 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
     <section id="docs" class="card" style="margin-top:14px">
       <h2 class="sectionTitle">Dokumentasi & Cara Kerja</h2>
 
-      <h3>1) Mode Teks (A–Z, m=26)</h3>
-      <p>Pemetaan: A=0 … Z=25. Syarat <b>a</b> punya invers modulo 26 (gcd(a,26)=1). Enkripsi: <code>y=(a·x+b) mod 26</code>. Dekripsi: <code>x=a⁻¹·(y−b) mod 26</code> (a⁻¹ dihitung via Extended Euclid).</p>
-
-      <h3>2) Mode Berkas (m=256)</h3>
-      <p>Bekerja pada byte 0..255. Syarat <b>a</b> relatif prima dengan 256 (praktisnya pilih bilangan ganjil). Enkripsi: <code>C[i]=(a·P[i]+b) mod 256</code>. Dekripsi: <code>P[i]=a⁻¹·(C[i]−b) mod 256</code>.</p>
-
-      <p class="small"><b>Catatan:</b> Affine untuk pembelajaran, bukan keamanan produksi. Gunakan AES/ChaCha20 untuk data sensitif.</p>
+      <h3>Keyword Cipher (Monoalphabetic Substitution)</h3>
+      <p>Bangun alfabet cipher dari <b>keyword</b> (UPPERCASE, hapus duplikasi) yang dilanjutkan sisa huruf A–Z yang belum muncul. Enkripsi: setiap huruf plaintext dipetakan ke huruf pada posisi yang sama di alfabet cipher. Dekripsi: gunakan peta kebalikan.</p>
+      <p class="small"><b>Contoh</b> — Keyword: <code>SECURITY</code> → Alfabet cipher: <code>SECURITYABDFGHJKLMNOPQVWXZ</code>. Plain <code>A</code> → Cipher <code>S</code>, Plain <code>B</code> → <code>E</code>, dst.</p>
+      <p class="small"><b>Catatan:</b> Ini untuk edukasi (kriptografi klasik), bukan untuk keamanan produksi.</p>
     </section>
 
-    <footer>© 2025 Crypto Lab • Affine • Tema Prism Forge • Kontras aman & responsif.</footer>
+    <footer>© 2025 Crypto Lab • Keyword • Tema Prism Forge • Kontras aman & responsif.</footer>
   </main>
 
 <script>
@@ -293,15 +258,32 @@ document.querySelectorAll('a, .btn, .card, input, textarea, select, label').forE
   el.addEventListener('pointerleave', ()=>setRingBig(false));
 });
 
-/* ================= UTIL: modulo & invers ================= */
-const mod = (x,m)=>((x%m)+m)%m;
-function egcd(a,b){ if(b===0) return [a,1,0]; const [g,x1,y1]=egcd(b, a%b); return [g, y1, x1 - Math.floor(a/b)*y1]; }
-function modInv(a,m){ a=mod(a,m); const [g,x]=egcd(a,m); if(g!==1) return null; return mod(x,m); }
-function gcd(a,b){ while(b){ const t=a%b; a=b; b=t; } return Math.abs(a); }
+/* ================= UTIL & STATE ================= */
+const AZ='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function onlyAZ(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,''); }
+function isLetter(ch){ return /^[A-Za-z]$/.test(ch); }
 
-/* ================== AFFINE (TEKS) ================== */
-const aTxt = document.getElementById('aTxt');
-const bTxt = document.getElementById('bTxt');
+/* Build cipher alphabet from keyword */
+const keyTxt = document.getElementById('keyTxt');
+const plainRow = document.getElementById('plainRow');
+const cipherRow = document.getElementById('cipherRow');
+
+function buildCipherAlphabet(){
+  const k = onlyAZ(keyTxt.value);
+  const seen=new Set(); let head='';
+  for(const ch of k){ if(!seen.has(ch)){ seen.add(ch); head+=ch; } }
+  for(const ch of AZ){ if(!seen.has(ch)){ seen.add(ch); head+=ch; } }
+  return head;
+}
+function renderMap(){
+  const cipher = buildCipherAlphabet();
+  plainRow.textContent = AZ.split('').join(' ');
+  cipherRow.textContent = cipher.split('').join(' ');
+}
+keyTxt.addEventListener('input', renderMap);
+renderMap();
+
+/* ================== KEYWORD (TEKS) ================== */
 const keepNon = document.getElementById('keepNon');
 const showSteps = document.getElementById('showSteps');
 const plainTxt = document.getElementById('plainTxt');
@@ -309,68 +291,45 @@ const outTxt = document.getElementById('outTxt');
 const stepsWrap = document.getElementById('stepsWrap');
 const stepsTblBody = document.querySelector('#stepsTbl tbody');
 
-function onlyAZ(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,''); }
-function isLetter(ch){ return /^[A-Za-z]$/.test(ch); }
-function A(ord){ return ord.charCodeAt(0)-65; }
-function Z(i){ return String.fromCharCode((i%26+26)%26 + 65); }
-
-function encText(){
-  const a = Number(aTxt.value), b = Number(bTxt.value);
-  if(!(Number.isInteger(a) && a>=1 && a<=25) || gcd(a,26)!==1){ alert('a harus 1–25 dan gcd(a,26)=1. Contoh: 1,3,5,7,9,11,15,17,19,21,23,25.'); return; }
-  if(!(Number.isInteger(b) && b>=0 && b<=25)){ alert('b harus 0–25.'); return; }
-  const src = plainTxt.value || ''; const keep = keepNon.checked;
-
-  let res=''; stepsTblBody.innerHTML=''; let idx=0;
-  for(const ch of src){
-    if(isLetter(ch)){
-      const x = A(ch.toUpperCase());
-      const y = mod(a*x + b, 26);
-      const out = (ch===ch.toLowerCase()) ? Z(y).toLowerCase() : Z(y);
-      res += out; idx++;
-      if(showSteps.checked){
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${idx}</td><td>${Z(x)}</td><td>${a}</td><td>${b}</td><td>(a·x + b) mod 26</td><td>${Z(y)}</td>`;
-        stepsTblBody.appendChild(tr);
-      }
-    }else{
-      if(keep) res += ch;
-    }
-  }
-  outTxt.value = res;
-  stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
+function makeDict(){
+  const cipher = buildCipherAlphabet();
+  const enc={}, dec={};
+  for(let i=0;i<26;i++){ enc[AZ[i]]=cipher[i]; dec[cipher[i]]=AZ[i]; }
+  return {enc,dec};
 }
 
-function decText(){
-  const a = Number(aTxt.value), b = Number(bTxt.value);
-  if(!(Number.isInteger(a) && a>=1 && a<=25) || gcd(a,26)!==1){ alert('a harus 1–25 dan gcd(a,26)=1.'); return; }
-  if(!(Number.isInteger(b) && b>=0 && b<=25)){ alert('b harus 0–25.'); return; }
-  const inv = modInv(a,26); if(inv===null){ alert('a tidak memiliki invers modulo 26. Pilih a lain.'); return; }
+function transform(mode /* 'enc'|'dec' */){
+  const K = onlyAZ(keyTxt.value);
+  if(!K){ alert('Masukkan keyword (A–Z).'); return; }
 
-  const src = plainTxt.value || ''; const keep = keepNon.checked;
+  const dict = makeDict()[mode==='enc'?'enc':'dec'];
+  const keep = keepNon.checked;
+  const src = plainTxt.value || '';
 
-  let res=''; stepsTblBody.innerHTML=''; let idx=0;
+  let result=''; let step=0; stepsTblBody.innerHTML='';
   for(const ch of src){
     if(isLetter(ch)){
-      const y = A(ch.toUpperCase());
-      const x = mod(inv*(y - b), 26);
-      const out = (ch===ch.toLowerCase()) ? Z(x).toLowerCase() : Z(x);
-      res += out; idx++;
+      const up=ch.toUpperCase();
+      const mapped = dict[up];                       // substitusi
+      const outCh = (ch===ch.toLowerCase()) ? mapped.toLowerCase() : mapped;
+      result += outCh;
+
       if(showSteps.checked){
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${idx}</td><td>${Z(y)}</td><td>${a} (a⁻¹=${inv})</td><td>${b}</td><td>a⁻¹·(y−b) mod 26</td><td>${Z(x)}</td>`;
+        tr.innerHTML = `<td>${++step}</td><td>${up}</td><td>${up}→${mapped}</td><td>${mode==='enc'?'Substitusi (Plain→Cipher)':'Balik (Cipher→Plain)'}</td><td>${outCh}</td>`;
         stepsTblBody.appendChild(tr);
       }
     }else{
-      if(keep) res += ch;
+      if(keep) result += ch;
     }
   }
-  outTxt.value = res;
+  outTxt.value = result;
   stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
 }
 
 /* Buttons (text) */
-document.getElementById('encTxt').onclick = encText;
-document.getElementById('decTxt').onclick = decText;
+document.getElementById('encTxt').onclick = ()=>transform('enc');
+document.getElementById('decTxt').onclick = ()=>transform('dec');
 document.getElementById('cleanAZ').onclick = ()=>{ plainTxt.value = onlyAZ(plainTxt.value); };
 document.getElementById('clrTxt').onclick = ()=>{
   plainTxt.value=''; outTxt.value=''; stepsTblBody.innerHTML=''; stepsWrap.style.display='none';
@@ -383,85 +342,14 @@ document.getElementById('copyTxt').onclick = ()=>{
 };
 showSteps.onchange = ()=>{ stepsWrap.style.display = showSteps.checked ? 'block' : 'none'; };
 
-/* ================== AFFINE (BERKAS / BYTE) ================== */
-const aFile = document.getElementById('aFile');
-const bFile = document.getElementById('bFile');
-const fileIn  = document.getElementById('fileIn');
-const prog    = document.getElementById('prog');
-const stat    = document.getElementById('stat');
-
-function readFileAsArrayBuffer(file){
-  return new Promise((resolve,reject)=>{
-    const fr=new FileReader();
-    fr.onerror = ()=>reject(fr.error);
-    fr.onload  = ()=>resolve(fr.result);
-    fr.readAsArrayBuffer(file);
-  });
-}
-
-function processBytesAffine(buf, a, b, mode /* 'enc' | 'dec' */){
-  const src = new Uint8Array(buf);
-  const dst = new Uint8Array(src.length);
-  if(mode==='enc'){
-    for(let i=0;i<src.length;i++){
-      dst[i] = (a*src[i] + b) & 0xff;
-      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
-    }
-  }else{
-    const inv = modInv(a,256);
-    if(inv===null) throw new Error('a tidak invertible modulo 256');
-    for(let i=0;i<src.length;i++){
-      dst[i] = (inv * ((src[i] - b) & 0xff)) & 0xff;
-      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
-    }
-  }
-  prog.value = 100;
-  return dst;
-}
-
-function downloadBytes(bytes, name){
-  const blob = new Blob([bytes], {type:'application/octet-stream'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = name;
-  document.body.appendChild(a); a.click();
-  a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
-}
-
-async function handleFile(mode){
-  const f = fileIn.files?.[0];
-  if(!f){ alert('Pilih berkas terlebih dahulu.'); return; }
-  const a = Number(aFile.value), b = Number(bFile.value);
-  if(!(Number.isInteger(a) && a>=1 && a<=255 && (a%2===1))){ alert('a (file) harus ganjil 1–255 agar invertible mod 256.'); return; }
-  if(!(Number.isInteger(b) && b>=0 && b<=255)){ alert('b (file) harus 0–255.'); return; }
-
-  prog.value = 0; stat.textContent = (mode==='enc'?'Enkripsi':'Dekripsi')+' berjalan…';
-  try{
-    const buf = await readFileAsArrayBuffer(f);
-    const out = processBytesAffine(buf, a, b, mode);
-    const suffix = mode==='enc' ? '.affine.enc' : '.affine.dec';
-    const name = (f.name||'file') + suffix;
-    downloadBytes(out, name);
-    stat.textContent = 'Selesai: '+name;
-  }catch(err){
-    console.error(err);
-    alert('Gagal memproses: '+(err?.message||err));
-    stat.textContent = 'Gagal.';
-  }
-}
-
-document.getElementById('encFile').onclick = ()=>handleFile('enc');
-document.getElementById('decFile').onclick = ()=>handleFile('dec');
-document.getElementById('clrFile').onclick = ()=>{
-  fileIn.value=''; prog.value=0; stat.textContent='';
-};
-
 /* ================= SHORTCUTS ================= */
 addEventListener('keydown',(e)=>{
   const tag=(e.target||{}).tagName; if(tag==='INPUT'||tag==='TEXTAREA') return;
   const k=e.key.toLowerCase();
   if(k==='i') location.href='index.html';
   if(k==='a') location.href='autokey.html';
+  if(k==='f') location.href='affine.html';
+  if(k==='k') location.href='keyword.html';
 });
 </script>
 </body>
