@@ -121,7 +121,13 @@ textarea{min-height:160px; resize:vertical}
 
 .out{background:#00000010}
 
-/* tabel langkah */
+/* progress */
+progress{width:100%; height:10px; appearance:none; -webkit-appearance:none}
+progress::-webkit-progress-bar{background:#0b1220; border-radius:999px}
+progress::-webkit-progress-value{background:linear-gradient(90deg, var(--p2), #60a5fa); border-radius:999px}
+.light progress::-webkit-progress-bar{background:#eef2f7}
+
+/* tabel */
 .tableWrap{overflow:auto; border:1px solid var(--border); border-radius:12px; background:var(--glass); margin-top:10px}
 table{width:100%; border-collapse:collapse; font-size:.95rem}
 th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap}
@@ -161,7 +167,7 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
 
   <main class="container">
     <h1 class="title">Keyword Cipher</h1>
-    <p class="subtitle">Mode <b>Teks (A–Z)</b> dengan substitusi monoalfabetis berbasis <b>keyword</b>. Non huruf bisa dipertahankan.</p>
+    <p class="subtitle">Substitusi monoalfabetis untuk <b>teks (A–Z)</b> & variasi <b>byte-safe</b> untuk berkas (0–255) berbasis keyword.</p>
 
     <!-- ================= TEXT MODE ================= -->
     <section id="text" class="card" style="margin-top:12px">
@@ -171,7 +177,7 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
         <div class="field">
           <label for="keyTxt">Keyword (huruf):</label>
           <input id="keyTxt" type="text" placeholder="mis. SECURITY" autocomplete="off" />
-          <div class="small">Hanya huruf A–Z dipakai (dinormalisasi ke UPPERCASE dan dihapus duplikasi).</div>
+          <div class="small">Hanya huruf A–Z dipakai (UPPERCASE, duplikasi dihapus).</div>
         </div>
         <label class="row" style="gap:8px"><input id="keepNon" type="checkbox" checked /> <span>Pertahankan spasi & tanda baca</span></label>
         <label class="row" style="gap:8px"><input id="showSteps" type="checkbox" /> <span>Tampilkan tabel langkah</span></label>
@@ -196,6 +202,7 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
         </div>
       </div>
 
+      <!-- PETA ALFABET -->
       <div class="tableWrap" id="mapWrap" style="margin-top:10px">
         <table>
           <thead>
@@ -207,6 +214,7 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
         </table>
       </div>
 
+      <!-- STEPS -->
       <div id="stepsWrap" class="tableWrap" style="display:none; margin-top:10px">
         <table id="stepsTbl">
           <thead>
@@ -217,14 +225,43 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
       </div>
     </section>
 
+    <!-- ================= FILE MODE (BYTE-SAFE) ================= -->
+    <section id="file" class="card" style="margin-top:14px">
+      <h2 class="sectionTitle">Berkas (Byte-Safe)</h2>
+      <p class="small">Bangun “alfabet byte” dari <b>keyword</b> (byte UTF-8 unik, urut kemunculan), lalu sisa byte 0..255. Enkripsi: <code>C[i] = map[P[i]]</code>; Dekripsi: <code>P[i] = inv[C[i]]</code>. Tidak mengubah ukuran berkas.</p>
+
+      <div class="row">
+        <div class="field">
+          <label for="keyFileTxt">Keyword (string untuk berkas):</label>
+          <input id="keyFileTxt" type="text" placeholder="mis. my-secret-key" autocomplete="off" />
+          <div class="small">Bisa berisi ASCII/Unicode (diubah ke UTF-8 bytes).</div>
+        </div>
+        <div class="field">
+          <label for="fileIn">Pilih berkas:</label>
+          <input id="fileIn" type="file" />
+        </div>
+      </div>
+
+      <div class="tools" style="margin-top:8px">
+        <button class="btn" id="encFile" data-magnet>Enkripsi Berkas</button>
+        <button class="btn" id="decFile" data-magnet>Dekripsi Berkas</button>
+        <button class="btn danger" id="clrFile">Reset</button>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <progress id="prog" value="0" max="100" aria-label="Progres"></progress>
+        <span class="small" id="stat" aria-live="polite"></span>
+      </div>
+    </section>
+
     <!-- ================= DOKUMENTASI ================= -->
     <section id="docs" class="card" style="margin-top:14px">
       <h2 class="sectionTitle">Dokumentasi & Cara Kerja</h2>
 
       <h3>Keyword Cipher (Monoalphabetic Substitution)</h3>
-      <p>Bangun alfabet cipher dari <b>keyword</b> (UPPERCASE, hapus duplikasi) yang dilanjutkan sisa huruf A–Z yang belum muncul. Enkripsi: setiap huruf plaintext dipetakan ke huruf pada posisi yang sama di alfabet cipher. Dekripsi: gunakan peta kebalikan.</p>
-      <p class="small"><b>Contoh</b> — Keyword: <code>SECURITY</code> → Alfabet cipher: <code>SECURITYABDFGHJKLMNOPQVWXZ</code>. Plain <code>A</code> → Cipher <code>S</code>, Plain <code>B</code> → <code>E</code>, dst.</p>
-      <p class="small"><b>Catatan:</b> Ini untuk edukasi (kriptografi klasik), bukan untuk keamanan produksi.</p>
+      <p><b>Teks:</b> Alfabet cipher = <code>KEYWORD*</code> (huruf unik) + sisa A–Z. Enkripsi: map posisi; Dekripsi: peta kebalikan.</p>
+      <p><b>Berkas:</b> Alfabet byte = <code>bytes(KEYWORD)*</code> (unik, UTF-8) + sisa 0..255. Enkripsi byte-per-byte: substitusi langsung.</p>
+      <p class="small"><b>Catatan:</b> Edukatif, bukan untuk keamanan produksi. Untuk data sensitif gunakan AES/ChaCha20.</p>
     </section>
 
     <footer>© 2025 Crypto Lab • Keyword • Tema Prism Forge • Kontras aman & responsif.</footer>
@@ -257,17 +294,17 @@ document.querySelectorAll('a, .btn, .card, input, textarea, select, label').forE
   el.addEventListener('pointerleave', ()=>setRingBig(false));
 });
 
-/* ================= UTIL & STATE ================= */
+/* ================= UTIL (TEKS) ================= */
 const AZ='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 function onlyAZ(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,''); }
 function isLetter(ch){ return /^[A-Za-z]$/.test(ch); }
 
-/* Build cipher alphabet from keyword */
+/* ====== PETA ALFABET TEKS ====== */
 const keyTxt = document.getElementById('keyTxt');
 const plainRow = document.getElementById('plainRow');
 const cipherRow = document.getElementById('cipherRow');
 
-function buildCipherAlphabet(){
+function buildCipherAlphabetText(){
   const k = onlyAZ(keyTxt.value);
   const seen=new Set(); let head='';
   for(const ch of k){ if(!seen.has(ch)){ seen.add(ch); head+=ch; } }
@@ -275,14 +312,14 @@ function buildCipherAlphabet(){
   return head;
 }
 function renderMap(){
-  const cipher = buildCipherAlphabet();
+  const cipher = buildCipherAlphabetText();
   plainRow.textContent = AZ.split('').join(' ');
   cipherRow.textContent = cipher.split('').join(' ');
 }
 keyTxt.addEventListener('input', renderMap);
 renderMap();
 
-/* ================== KEYWORD (TEKS) ================== */
+/* ====== ENK/DEK TEKS ====== */
 const keepNon = document.getElementById('keepNon');
 const showSteps = document.getElementById('showSteps');
 const plainTxt = document.getElementById('plainTxt');
@@ -290,29 +327,25 @@ const outTxt = document.getElementById('outTxt');
 const stepsWrap = document.getElementById('stepsWrap');
 const stepsTblBody = document.querySelector('#stepsTbl tbody');
 
-function makeDict(){
-  const cipher = buildCipherAlphabet();
+function makeDictText(){
+  const cipher = buildCipherAlphabetText();
   const enc={}, dec={};
   for(let i=0;i<26;i++){ enc[AZ[i]]=cipher[i]; dec[cipher[i]]=AZ[i]; }
   return {enc,dec};
 }
-
 function transform(mode /* 'enc'|'dec' */){
   const K = onlyAZ(keyTxt.value);
   if(!K){ alert('Masukkan keyword (A–Z).'); return; }
-
-  const dict = makeDict()[mode==='enc'?'enc':'dec'];
+  const dict = makeDictText()[mode==='enc'?'enc':'dec'];
   const keep = keepNon.checked;
   const src = plainTxt.value || '';
-
   let result=''; let step=0; stepsTblBody.innerHTML='';
   for(const ch of src){
     if(isLetter(ch)){
       const up=ch.toUpperCase();
-      const mapped = dict[up];                       // substitusi
+      const mapped = dict[up];
       const outCh = (ch===ch.toLowerCase()) ? mapped.toLowerCase() : mapped;
       result += outCh;
-
       if(showSteps.checked){
         const tr=document.createElement('tr');
         tr.innerHTML = `<td>${++step}</td><td>${up}</td><td>${up}→${mapped}</td><td>${mode==='enc'?'Substitusi (Plain→Cipher)':'Balik (Cipher→Plain)'}</td><td>${outCh}</td>`;
@@ -325,7 +358,6 @@ function transform(mode /* 'enc'|'dec' */){
   outTxt.value = result;
   stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
 }
-
 /* Buttons (text) */
 document.getElementById('encTxt').onclick = ()=>transform('enc');
 document.getElementById('decTxt').onclick = ()=>transform('dec');
@@ -340,6 +372,87 @@ document.getElementById('copyTxt').onclick = ()=>{
   });
 };
 showSteps.onchange = ()=>{ stepsWrap.style.display = showSteps.checked ? 'block' : 'none'; };
+
+/* ================= FILE MODE (BYTE-SAFE) ================= */
+const keyFileTxt = document.getElementById('keyFileTxt');
+const fileIn  = document.getElementById('fileIn');
+const prog    = document.getElementById('prog');
+const stat    = document.getElementById('stat');
+
+function readFileAsArrayBuffer(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onerror = ()=>reject(fr.error);
+    fr.onload  = ()=>resolve(fr.result);
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+/* Build byte permutation from keyword (UTF-8) */
+function buildCipherAlphabetBytes(keyStr){
+  const keyBytes = new TextEncoder().encode(keyStr || '');
+  const seen = new Array(256).fill(false);
+  const cipher = new Uint8Array(256); let idx=0;
+  for(const b of keyBytes){ if(!seen[b]){ seen[b]=true; cipher[idx++]=b; } }
+  for(let b=0;b<256;b++){ if(!seen[b]) cipher[idx++]=b; }
+  const inv = new Uint8Array(256);
+  for(let i=0;i<256;i++){ inv[cipher[i]] = i; }
+  return {cipher, inv};
+}
+
+function processBytesKeyword(buf, keyStr, mode /* 'enc'|'dec' */){
+  const {cipher, inv} = buildCipherAlphabetBytes(keyStr);
+  const src = new Uint8Array(buf);
+  const dst = new Uint8Array(src.length);
+  if(mode==='enc'){
+    for(let i=0;i<src.length;i++){
+      dst[i] = cipher[src[i]];
+      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
+    }
+  }else{
+    for(let i=0;i<src.length;i++){
+      dst[i] = inv[src[i]];
+      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
+    }
+  }
+  prog.value = 100;
+  return dst;
+}
+
+function downloadBytes(bytes, name){
+  const blob = new Blob([bytes], {type:'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+async function handleFile(mode){
+  const f = fileIn.files?.[0];
+  if(!f){ alert('Pilih berkas terlebih dahulu.'); return; }
+  const keyStr = String(keyFileTxt.value||'');
+  if(!keyStr.length){ alert('Masukkan keyword untuk berkas.'); return; }
+
+  prog.value = 0; stat.textContent = (mode==='enc'?'Enkripsi':'Dekripsi')+' berjalan…';
+  try{
+    const buf = await readFileAsArrayBuffer(f);
+    const out = processBytesKeyword(buf, keyStr, mode);
+    const suffix = mode==='enc' ? '.keyword.enc' : '.keyword.dec';
+    const name = (f.name||'file') + suffix;
+    downloadBytes(out, name);
+    stat.textContent = 'Selesai: '+name;
+  }catch(err){
+    console.error(err);
+    alert('Gagal memproses: '+(err?.message||err));
+    stat.textContent = 'Gagal.';
+  }
+}
+document.getElementById('encFile').onclick = ()=>handleFile('enc');
+document.getElementById('decFile').onclick = ()=>handleFile('dec');
+document.getElementById('clrFile').onclick = ()=>{
+  fileIn.value=''; prog.value=0; stat.textContent='';
+};
 
 /* ================= SHORTCUTS ================= */
 addEventListener('keydown',(e)=>{
