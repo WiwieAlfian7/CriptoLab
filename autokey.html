@@ -145,6 +145,8 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
   box-shadow:var(--shadow); font-weight:800
 }
 .swap-btn:hover{filter:brightness(1.06)}
+.swap-btn svg{ width:22px; height:22px; pointer-events:none; }
+.swap-btn:focus{ outline:2px solid #93c5fd; outline-offset:2px; }
 </style>
 </head>
 <body>
@@ -213,8 +215,14 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
           </div>
         </div>
 
-        <!-- Tombol tukar isi -->
-        <button id="swapBtn" class="swap-btn" title="Tukar isi (hasil ↔ pesan)">⟲</button>
+        <!-- Tombol tukar isi (ikon swap SVG) -->
+        <button id="swapBtn" class="swap-btn" title="Tukar isi (hasil ↔ pesan)" aria-label="Tukar isi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 3l5 5-5 5"/><path d="M21 8H3"/>
+            <path d="M8 21l-5-5 5-5"/><path d="M3 16h18"/>
+          </svg>
+        </button>
       </div>
 
       <div id="stepsWrap" class="tableWrap" style="display:none">
@@ -303,7 +311,7 @@ addEventListener('pointermove', e=>{ tx=e.clientX; ty=e.clientY; }, {passive:tru
 function tick(){ rx+=(tx-rx)*0.18; ry+=(ty-ry)*0.18; ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`; requestAnimationFrame(tick); }
 if(!matchMedia('(pointer: coarse)').matches){ tick(); }
 function setRingBig(on){ ring.classList.toggle('big', on); }
-document.querySelectorAll('a, .btn, .card, input, textarea, select, label').forEach(el=>{
+document.querySelectorAll('a, .btn, .card, input, textarea, select, label, .swap-btn').forEach(el=>{
   el.addEventListener('pointerenter', ()=>setRingBig(true));
   el.addEventListener('pointerleave', ()=>setRingBig(false));
 });
@@ -330,7 +338,7 @@ function encryptText(){
   const keep = keepNon.checked;
 
   let result=''; const KEY=K.toUpperCase(); const KL=KEY.length;
-  let letterIdx=0; const seenPlain=[]; // array huruf plaintext (A–Z) yang sudah diproses
+  let letterIdx=0; const seenPlain=[]; // huruf plaintext yang sudah diproses (A–Z)
   stepsTblBody.innerHTML='';
 
   for(const ch of src){
@@ -346,7 +354,7 @@ function encryptText(){
           `<tr><td>${letterIdx}</td><td>${Z(p)}</td><td>${keyCh}</td><td>+${k}</td><td>(P+K) mod 26</td><td>${Z(c)}</td></tr>`);
       }
     }else{
-      if(keep) result+=ch; // lewatkan spasi/tanda baca tanpa menggeser keystream
+      if(keep) result+=ch; // lewati spasi/tanda baca tanpa menggeser keystream
     }
   }
   outTxt.value=result;
@@ -361,7 +369,7 @@ function decryptText(){
   const keep = keepNon.checked;
 
   let result=''; const KEY=K.toUpperCase(); const KL=KEY.length;
-  let letterIdx=0; const recovered=[]; // kumpulan huruf plaintext yang sudah dipulihkan
+  let letterIdx=0; const recovered=[]; // huruf plaintext yang sudah dipulihkan
   stepsTblBody.innerHTML='';
 
   for(const ch of src){
@@ -470,9 +478,7 @@ async function handleFile(mode){
 }
 document.getElementById('encFile').onclick = ()=>handleFile('enc');
 document.getElementById('decFile').onclick = ()=>handleFile('dec');
-document.getElementById('clrFile').onclick = ()=>{
-  fileIn.value=''; prog.value=0; stat.textContent='';
-};
+document.getElementById('clrFile').onclick = ()=>{ fileIn.value=''; prog.value=0; stat.textContent=''; };
 
 /* ================= SHORTCUTS ================= */
 addEventListener('keydown',(e)=>{
