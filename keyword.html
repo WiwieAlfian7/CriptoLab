@@ -47,14 +47,6 @@ button{font:inherit; cursor:pointer}
 @keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(2vw,-2vh,0) scale(1.03)}}
 @media (prefers-reduced-motion: reduce){ .aurora{animation:none} }
 
-.cursor{
-  position:fixed; top:0; left:0; width:26px; height:26px; border-radius:50%;
-  border:2px solid var(--p2); pointer-events:none; z-index:9999; mix-blend-mode:screen; opacity:.6; transform:translate(-50%,-50%);
-  transition: border-color .2s ease, box-shadow .2s ease, width .15s ease, height .15s ease;
-}
-.cursor.big{ width:44px; height:44px; border-width:2px; box-shadow:0 0 26px var(--p2) }
-@media (pointer: coarse){ .cursor{display:none} }
-
 /* =================== NAV =================== */
 .nav{
   position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
@@ -119,27 +111,28 @@ textarea{min-height:160px; resize:vertical}
 .tools{display:flex; gap:8px; flex-wrap:wrap}
 .copy{position:absolute; top:10px; right:10px}
 
-.out{background:#00000010}
-
 /* progress */
 progress{width:100%; height:10px; appearance:none; -webkit-appearance:none}
 progress::-webkit-progress-bar{background:#0b1220; border-radius:999px}
 progress::-webkit-progress-value{background:linear-gradient(90deg, var(--p2), #60a5fa); border-radius:999px}
 .light progress::-webkit-progress-bar{background:#eef2f7}
 
-/* tabel */
+/* tabel umum */
 .tableWrap{overflow:auto; border:1px solid var(--border); border-radius:12px; background:var(--glass); margin-top:10px}
 table{width:100%; border-collapse:collapse; font-size:.95rem}
 th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap}
 tr:nth-child(even){background-color:#ffffff08}
 .light tr:nth-child(even){background-color:#00000006}
 
+/* peta alfabet (grid 26 kolom) */
+.map th, .map td{ text-align:center; font:600 15px/1.2 ui-monospace, Menlo, Consolas, monospace }
+.map th{ position:sticky; top:0; background:var(--glass) }
+
 footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95rem}
 </style>
 </head>
 <body>
   <div class="aurora" aria-hidden="true"></div>
-  <div class="cursor" id="cursor" aria-hidden="true"></div>
 
   <!-- NAV -->
   <nav class="nav">
@@ -202,15 +195,11 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
         </div>
       </div>
 
-      <!-- PETA ALFABET -->
+      <!-- PETA ALFABET (GRID 26 KOLOM) -->
       <div class="tableWrap" id="mapWrap" style="margin-top:10px">
-        <table>
-          <thead>
-            <tr><th>Plain</th><th id="plainRow"></th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Cipher (dari keyword)</td><td id="cipherRow"></td></tr>
-          </tbody>
+        <table id="mapTbl" class="map">
+          <thead><tr id="mapHead"></tr></thead>
+          <tbody><tr id="mapBody"></tr></tbody>
         </table>
       </div>
 
@@ -259,9 +248,9 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
       <h2 class="sectionTitle">Dokumentasi & Cara Kerja</h2>
 
       <h3>Keyword Cipher (Monoalphabetic Substitution)</h3>
-      <p><b>Teks:</b> Alfabet cipher = <code>KEYWORD*</code> (huruf unik) + sisa A–Z. Enkripsi: map posisi; Dekripsi: peta kebalikan.</p>
-      <p><b>Berkas:</b> Alfabet byte = <code>bytes(KEYWORD)*</code> (unik, UTF-8) + sisa 0..255. Enkripsi byte-per-byte: substitusi langsung.</p>
-      <p class="small"><b>Catatan:</b> Edukatif, bukan untuk keamanan produksi. Untuk data sensitif gunakan AES/ChaCha20.</p>
+      <p><b>Teks:</b> Alfabet cipher = <code>KEYWORD*</code> (huruf unik) + sisa A–Z. Enkripsi: map posisi; Dekripsi: peta kebalikan (case-preserving).</p>
+      <p><b>Berkas:</b> Alfabet byte = <code>bytes(KEYWORD)*</code> (unik, UTF-8) + sisa 0..255. Enkripsi byte-per-byte; dekripsi pakai inverse map. Ukuran file tetap.</p>
+      <p class="small"><b>Catatan:</b> Ini cipher edukatif, bukan pengganti kriptografi modern (AES/ChaCha20) untuk data sensitif.</p>
     </section>
 
     <footer>© 2025 Crypto Lab • Keyword • Tema Prism Forge • Kontras aman & responsif.</footer>
@@ -282,18 +271,6 @@ themeBtn.onclick=()=>{
   metaScheme.setAttribute('content', light?'light dark':'dark light');
 };
 
-/* ================= CURSOR RING ================= */
-const ring=document.getElementById('cursor');
-let rx=0, ry=0, tx=0, ty=0;
-addEventListener('pointermove', e=>{ tx=e.clientX; ty=e.clientY; }, {passive:true});
-function tick(){ rx+=(tx-rx)*0.18; ry+=(ty-ry)*0.18; ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`; requestAnimationFrame(tick); }
-if(!matchMedia('(pointer: coarse)').matches){ tick(); }
-function setRingBig(on){ ring.classList.toggle('big', on); }
-document.querySelectorAll('a, .btn, .card, input, textarea, select, label').forEach(el=>{
-  el.addEventListener('pointerenter', ()=>setRingBig(true));
-  el.addEventListener('pointerleave', ()=>setRingBig(false));
-});
-
 /* ================= UTIL (TEKS) ================= */
 const AZ='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 function onlyAZ(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,''); }
@@ -301,23 +278,27 @@ function isLetter(ch){ return /^[A-Za-z]$/.test(ch); }
 
 /* ====== PETA ALFABET TEKS ====== */
 const keyTxt = document.getElementById('keyTxt');
-const plainRow = document.getElementById('plainRow');
-const cipherRow = document.getElementById('cipherRow');
+const mapHead = document.getElementById('mapHead');
+const mapBody = document.getElementById('mapBody');
 
 function buildCipherAlphabetText(){
   const k = onlyAZ(keyTxt.value);
   const seen=new Set(); let head='';
   for(const ch of k){ if(!seen.has(ch)){ seen.add(ch); head+=ch; } }
   for(const ch of AZ){ if(!seen.has(ch)){ seen.add(ch); head+=ch; } }
-  return head;
+  return head; // panjang 26
 }
-function renderMap(){
+function renderMapGrid(){
   const cipher = buildCipherAlphabetText();
-  plainRow.textContent = AZ.split('').join(' ');
-  cipherRow.textContent = cipher.split('').join(' ');
+  mapHead.innerHTML = '';
+  mapBody.innerHTML = '';
+  for (let i = 0; i < 26; i++) {
+    const th = document.createElement('th'); th.textContent = AZ[i]; mapHead.appendChild(th);
+    const td = document.createElement('td'); td.textContent = cipher[i]; mapBody.appendChild(td);
+  }
 }
-keyTxt.addEventListener('input', renderMap);
-renderMap();
+keyTxt.addEventListener('input', renderMapGrid);
+renderMapGrid();
 
 /* ====== ENK/DEK TEKS ====== */
 const keepNon = document.getElementById('keepNon');
@@ -333,6 +314,7 @@ function makeDictText(){
   for(let i=0;i<26;i++){ enc[AZ[i]]=cipher[i]; dec[cipher[i]]=AZ[i]; }
   return {enc,dec};
 }
+
 function transform(mode /* 'enc'|'dec' */){
   const K = onlyAZ(keyTxt.value);
   if(!K){ alert('Masukkan keyword (A–Z).'); return; }
@@ -340,6 +322,7 @@ function transform(mode /* 'enc'|'dec' */){
   const keep = keepNon.checked;
   const src = plainTxt.value || '';
   let result=''; let step=0; stepsTblBody.innerHTML='';
+
   for(const ch of src){
     if(isLetter(ch)){
       const up=ch.toUpperCase();
@@ -352,12 +335,13 @@ function transform(mode /* 'enc'|'dec' */){
         stepsTblBody.appendChild(tr);
       }
     }else{
-      if(keep) result += ch;
+      if(keep) result += ch; // kalau tidak keep, karakter non-huruf dibuang
     }
   }
   outTxt.value = result;
   stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
 }
+
 /* Buttons (text) */
 document.getElementById('encTxt').onclick = ()=>transform('enc');
 document.getElementById('decTxt').onclick = ()=>transform('dec');
