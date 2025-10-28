@@ -34,7 +34,7 @@ body{
 a{color:inherit; text-decoration:none}
 button{font:inherit; cursor:pointer}
 
-/* =================== BACKDROP & CURSOR =================== */
+/* =================== BACKDROP =================== */
 .aurora{
   position:fixed; inset:-12vmax; z-index:-3; pointer-events:none; filter:blur(60px); opacity:.9;
   background:
@@ -89,7 +89,6 @@ button{font:inherit; cursor:pointer}
 .sectionTitle{margin:10px 0 6px; font-weight:800}
 .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
 @media (max-width:980px){ .grid-2{grid-template-columns:1fr} }
-
 .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
 .field{flex:1 1 260px; min-width:240px}
 label{font-weight:600}
@@ -100,9 +99,6 @@ input[type="text"], textarea, select{
 input:focus, textarea:focus, select:focus{border-color:#93c5fd; box-shadow:0 0 0 3px rgba(147,197,253,.25)}
 textarea{min-height:160px; resize:vertical}
 .small{font-size:.92rem; color:var(--muted)}
-.kbd{font:500 13px/1 ui-monospace, Menlo, Consolas, monospace; background:#0b1220; color:#e5e7eb; padding:2px 6px; border-radius:6px; border:1px solid #334155}
-.light .kbd{background:#eef2f7; color:#0b1020; border-color:#cbd5e1}
-
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:10px 14px; border-radius:12px; border:0; color:#fff;
   background:linear-gradient(135deg, var(--p1), var(--p2)); box-shadow:var(--shadow); transition: transform .15s ease, filter .15s ease}
 .btn:hover{transform:translateY(-1px); filter:brightness(1.06)}
@@ -184,6 +180,7 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
             <button class="btn ghost" id="cleanAZ" data-magnet>Bersihkan → A–Z</button>
             <button class="btn" id="encTxt" data-magnet>Enkripsi Teks</button>
             <button class="btn" id="decTxt" data-magnet>Dekripsi Teks</button>
+            <button class="btn ghost" id="useOutToIn" data-magnet>Gunakan Hasil → Input</button>
             <button class="btn danger" id="clrTxt">Bersihkan Kolom</button>
           </div>
         </div>
@@ -315,12 +312,20 @@ function makeDictText(){
   return {enc,dec};
 }
 
-function transform(mode /* 'enc'|'dec' */){
+// ======= FIX: dekripsi prioritas baca dari kolom hasil (outTxt) =======
+function transform(mode /* 'enc'|'dec' */, srcOverride){
   const K = onlyAZ(keyTxt.value);
   if(!K){ alert('Masukkan keyword (A–Z).'); return; }
+
   const dict = makeDictText()[mode==='enc'?'enc':'dec'];
   const keep = keepNon.checked;
-  const src = plainTxt.value || '';
+
+  const src = (typeof srcOverride === 'string')
+    ? srcOverride
+    : (mode === 'dec'
+        ? (outTxt.value || plainTxt.value || '')
+        : (plainTxt.value || ''));
+
   let result=''; let step=0; stepsTblBody.innerHTML='';
 
   for(const ch of src){
@@ -335,7 +340,7 @@ function transform(mode /* 'enc'|'dec' */){
         stepsTblBody.appendChild(tr);
       }
     }else{
-      if(keep) result += ch; // kalau tidak keep, karakter non-huruf dibuang
+      if(keep) result += ch; // kalau tidak keep, non-huruf dibuang
     }
   }
   outTxt.value = result;
@@ -345,6 +350,10 @@ function transform(mode /* 'enc'|'dec' */){
 /* Buttons (text) */
 document.getElementById('encTxt').onclick = ()=>transform('enc');
 document.getElementById('decTxt').onclick = ()=>transform('dec');
+document.getElementById('useOutToIn').onclick = ()=>{
+  plainTxt.value = outTxt.value || '';
+  plainTxt.focus();
+};
 document.getElementById('cleanAZ').onclick = ()=>{ plainTxt.value = onlyAZ(plainTxt.value); };
 document.getElementById('clrTxt').onclick = ()=>{
   plainTxt.value=''; outTxt.value=''; stepsTblBody.innerHTML=''; stepsWrap.style.display='none';
