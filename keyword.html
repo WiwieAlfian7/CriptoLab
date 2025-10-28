@@ -34,7 +34,7 @@ body{
 a{color:inherit; text-decoration:none}
 button{font:inherit; cursor:pointer}
 
-/* =================== BACKDROP =================== */
+/* =================== BACKDROP & CURSOR =================== */
 .aurora{
   position:fixed; inset:-12vmax; z-index:-3; pointer-events:none; filter:blur(60px); opacity:.9;
   background:
@@ -46,6 +46,14 @@ button{font:inherit; cursor:pointer}
 .light .aurora{opacity:.66}
 @keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(2vw,-2vh,0) scale(1.03)}}
 @media (prefers-reduced-motion: reduce){ .aurora{animation:none} }
+
+.cursor{
+  position:fixed; top:0; left:0; width:26px; height:26px; border-radius:50%;
+  border:2px solid var(--p2); pointer-events:none; z-index:9999; mix-blend-mode:screen; opacity:.6; transform:translate(-50%,-50%);
+  transition: border-color .2s ease, box-shadow .2s ease, width .15s ease, height .15s ease;
+}
+.cursor.big{ width:44px; height:44px; border-width:2px; box-shadow:0 0 26px var(--p2) }
+@media (pointer: coarse){ .cursor{display:none} }
 
 /* =================== NAV =================== */
 .nav{
@@ -89,16 +97,20 @@ button{font:inherit; cursor:pointer}
 .sectionTitle{margin:10px 0 6px; font-weight:800}
 .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
 @media (max-width:980px){ .grid-2{grid-template-columns:1fr} }
+
 .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
 .field{flex:1 1 260px; min-width:240px}
 label{font-weight:600}
-input[type="text"], textarea, select{
+input[type="text"], input[type="file"], textarea, select{
   width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.02);
   color:var(--fg); outline:none; transition:border-color .2s ease, box-shadow .2s ease
 }
 input:focus, textarea:focus, select:focus{border-color:#93c5fd; box-shadow:0 0 0 3px rgba(147,197,253,.25)}
 textarea{min-height:160px; resize:vertical}
 .small{font-size:.92rem; color:var(--muted)}
+.kbd{font:500 13px/1 ui-monospace, Menlo, Consolas, monospace; background:#0b1220; color:#e5e7eb; padding:2px 6px; border-radius:6px; border:1px solid #334155}
+.light .kbd{background:#eef2f7; color:#0b1020; border-color:#cbd5e1}
+
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:10px 14px; border-radius:12px; border:0; color:#fff;
   background:linear-gradient(135deg, var(--p1), var(--p2)); box-shadow:var(--shadow); transition: transform .15s ease, filter .15s ease}
 .btn:hover{transform:translateY(-1px); filter:brightness(1.06)}
@@ -107,28 +119,39 @@ textarea{min-height:160px; resize:vertical}
 .tools{display:flex; gap:8px; flex-wrap:wrap}
 .copy{position:absolute; top:10px; right:10px}
 
+.out{background:#00000010}
+
 /* progress */
 progress{width:100%; height:10px; appearance:none; -webkit-appearance:none}
 progress::-webkit-progress-bar{background:#0b1220; border-radius:999px}
 progress::-webkit-progress-value{background:linear-gradient(90deg, var(--p2), #60a5fa); border-radius:999px}
 .light progress::-webkit-progress-bar{background:#eef2f7}
 
-/* tabel umum */
+/* tabel */
 .tableWrap{overflow:auto; border:1px solid var(--border); border-radius:12px; background:var(--glass); margin-top:10px}
 table{width:100%; border-collapse:collapse; font-size:.95rem}
-th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap}
+th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
 tr:nth-child(even){background-color:#ffffff08}
 .light tr:nth-child(even){background-color:#00000006}
 
-/* peta alfabet (grid 26 kolom) */
-.map th, .map td{ text-align:center; font:600 15px/1.2 ui-monospace, Menlo, Consolas, monospace }
-.map th{ position:sticky; top:0; background:var(--glass) }
+/* ======= SWAP BUTTON (tengah di antara 2 textarea) ======= */
+.swap-wrap{position:relative}
+.swap-btn{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  display:grid; place-items:center; width:44px; height:44px; border-radius:999px;
+  border:1px solid var(--border); background:var(--glass); backdrop-filter:blur(6px);
+  box-shadow:var(--shadow); font-weight:800
+}
+.swap-btn:hover{filter:brightness(1.06)}
+.swap-btn svg{ width:22px; height:22px; pointer-events:none; }
+.swap-btn:focus{ outline:2px solid #93c5fd; outline-offset:2px; }
 
 footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95rem}
 </style>
 </head>
 <body>
   <div class="aurora" aria-hidden="true"></div>
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
 
   <!-- NAV -->
   <nav class="nav">
@@ -155,82 +178,96 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
   </div>
 
   <main class="container">
-    <h1 class="title">Keyword Cipher</h1>
-    <p class="subtitle">Substitusi monoalfabetis untuk <b>teks (A–Z)</b> & variasi <b>byte-safe</b> untuk berkas (0–255) berbasis keyword.</p>
+    <h1 class="title">Keyword Cipher (Substitusi Monoalfabetik)</h1>
+    <p class="subtitle">
+      Tulis <b>Keyword</b> → alfabet cipher dibuat dari keyword (huruf unik, uppercase) + sisa A–Z.
+      Enkripsi/Dekripsi memetakan huruf sesuai tabel; spasi & tanda baca bisa dipertahankan.
+      Ada tombol <i>swap</i> isi & mode berkas <b>.txt</b>.
+    </p>
 
     <!-- ================= TEXT MODE ================= -->
-    <section id="text" class="card" style="margin-top:12px">
+    <section class="card" style="margin-top:12px">
       <h2 class="sectionTitle">Teks (A–Z)</h2>
 
       <div class="row" style="margin-bottom:8px">
         <div class="field">
-          <label for="keyTxt">Keyword (huruf):</label>
-          <input id="keyTxt" type="text" placeholder="mis. SECURITY" autocomplete="off" />
-          <div class="small">Hanya huruf A–Z dipakai (UPPERCASE, duplikasi dihapus).</div>
+          <label for="keyTxt">Keyword:</label>
+          <input id="keyTxt" type="text" placeholder="mis. SECURITY" autocomplete="off" aria-describedby="keyTxtHelp" />
+          <div id="keyTxtHelp" class="small">
+            • Hanya huruf A–Z digunakan (dinormalisasi ke <b>UPPERCASE</b>, duplikat dibuang).<br/>
+            • Alfabet cipher = <b>KEY_UNIQUE</b> + sisa huruf A–Z yang belum dipakai (urutan abjad).<br/>
+            • Contoh: KEY=<code>SECURITY</code> → Cipher Alphabet:
+              <code>SECURITYABDFGHKLMNOPQVWXZ</code>.
+          </div>
         </div>
         <label class="row" style="gap:8px"><input id="keepNon" type="checkbox" checked /> <span>Pertahankan spasi & tanda baca</span></label>
-        <label class="row" style="gap:8px"><input id="showSteps" type="checkbox" /> <span>Tampilkan tabel langkah</span></label>
       </div>
 
-      <div class="grid-2">
-        <div>
-          <label for="plainTxt">Pesan (plaintext / ciphertext):</label>
-          <textarea id="plainTxt" placeholder="Tulis teks di sini..."></textarea>
-          <div class="tools" style="margin-top:8px">
-            <button class="btn ghost" id="cleanAZ" data-magnet>Bersihkan → A–Z</button>
-            <button class="btn" id="encTxt" data-magnet>Enkripsi Teks</button>
-            <button class="btn" id="decTxt" data-magnet>Dekripsi Teks</button>
-            <button class="btn ghost" id="useOutToIn" data-magnet>Gunakan Hasil → Input</button>
-            <button class="btn danger" id="clrTxt">Bersihkan Kolom</button>
+      <!-- Mapping tabel (Plain vs Cipher) -->
+      <div class="tableWrap" aria-live="polite">
+        <table>
+          <thead>
+            <tr><th>Plain</th><td colspan="26" id="plainHead" style="font-weight:600"></td></tr>
+          </thead>
+          <tbody>
+            <tr><th>⇒</th><td colspan="26">↧</td></tr>
+            <tr><th>Cipher</th><td colspan="26" id="cipherHead" style="font-weight:800; letter-spacing:.5px"></td></tr>
+        </table>
+      </div>
+
+      <div class="swap-wrap" style="margin-top:10px">
+        <div class="grid-2">
+          <div>
+            <label for="plainTxt">Pesan (plaintext / ciphertext):</label>
+            <textarea id="plainTxt" placeholder="Tulis teks di sini..."></textarea>
+            <div class="tools" style="margin-top:8px">
+              <button class="btn ghost" id="cleanAZ" data-magnet>Bersihkan → A–Z</button>
+              <button class="btn" id="encTxt" data-magnet>Enkripsi Teks</button>
+              <button class="btn" id="decTxt" data-magnet>Dekripsi Teks</button>
+              <button class="btn danger" id="clrTxt">Bersihkan Kolom</button>
+            </div>
+          </div>
+
+          <div style="position:relative">
+            <label for="outTxt">Hasil:</label>
+            <textarea id="outTxt" class="out" readonly placeholder="Hasil akan muncul di sini..."></textarea>
+            <button class="btn ghost copy" id="copyTxt" title="Salin">Salin</button>
           </div>
         </div>
 
-        <div style="position:relative">
-          <label for="outTxt">Hasil:</label>
-          <textarea id="outTxt" class="out" readonly placeholder="Hasil akan muncul di sini..."></textarea>
-          <button class="btn ghost copy" id="copyTxt" title="Salin">Salin</button>
-        </div>
-      </div>
-
-      <!-- PETA ALFABET (GRID 26 KOLOM) -->
-      <div class="tableWrap" id="mapWrap" style="margin-top:10px">
-        <table id="mapTbl" class="map">
-          <thead><tr id="mapHead"></tr></thead>
-          <tbody><tr id="mapBody"></tr></tbody>
-        </table>
-      </div>
-
-      <!-- STEPS -->
-      <div id="stepsWrap" class="tableWrap" style="display:none; margin-top:10px">
-        <table id="stepsTbl">
-          <thead>
-            <tr><th>#</th><th>Input[i]</th><th>Peta</th><th>Operasi</th><th>Output</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <!-- Tombol tukar isi (ikon swap SVG) -->
+        <button id="swapBtn" class="swap-btn" title="Tukar isi (hasil ↔ pesan)" aria-label="Tukar isi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 3l5 5-5 5"/><path d="M21 8H3"/>
+            <path d="M8 21l-5-5 5-5"/><path d="M3 16h18"/>
+          </svg>
+        </button>
       </div>
     </section>
 
-    <!-- ================= FILE MODE (BYTE-SAFE) ================= -->
-    <section id="file" class="card" style="margin-top:14px">
-      <h2 class="sectionTitle">Berkas (Byte-Safe)</h2>
-      <p class="small">Bangun “alfabet byte” dari <b>keyword</b> (byte UTF-8 unik, urut kemunculan), lalu sisa byte 0..255. Enkripsi: <code>C[i] = map[P[i]]</code>; Dekripsi: <code>P[i] = inv[C[i]]</code>. Tidak mengubah ukuran berkas.</p>
+    <!-- ================= FILE MODE (.txt) ================= -->
+    <section class="card" style="margin-top:14px">
+      <h2 class="sectionTitle">Berkas Teks (.txt)</h2>
+      <p class="small">
+        Hanya huruf A–Z/a–z yang dipetakan sesuai tabel. Karakter lain (spasi, angka, tanda baca, emoji)
+        dibiarkan sama agar format tetap rapi. Enkripsi & dekripsi simetris (pakai keyword yang sama).
+      </p>
 
       <div class="row">
-        <div class="field">
-          <label for="keyFileTxt">Keyword (string untuk berkas):</label>
-          <input id="keyFileTxt" type="text" placeholder="mis. my-secret-key" autocomplete="off" />
-          <div class="small">Bisa berisi ASCII/Unicode (diubah ke UTF-8 bytes).</div>
-        </div>
-        <div class="field">
-          <label for="fileIn">Pilih berkas:</label>
-          <input id="fileIn" type="file" />
+        <div class="field" style="max-width:320px">
+          <label for="fileIn">Pilih berkas .txt:</label>
+          <input id="fileIn" type="file" accept=".txt,text/plain" aria-describedby="fileInHelp"/>
+          <div id="fileInHelp" class="small">
+            • Disarankan file teks UTF-8. Untuk dokumen biner (PDF/ZIP) gunakan halaman Autokey (Byte-Safe).<br/>
+            • Hasil disimpan sebagai <code>.kw.enc.txt</code> / <code>.kw.dec.txt</code>.
+          </div>
         </div>
       </div>
 
       <div class="tools" style="margin-top:8px">
-        <button class="btn" id="encFile" data-magnet>Enkripsi Berkas</button>
-        <button class="btn" id="decFile" data-magnet>Dekripsi Berkas</button>
+        <button class="btn" id="encFile" data-magnet>Enkripsi Berkas .txt</button>
+        <button class="btn" id="decFile" data-magnet>Dekripsi Berkas .txt</button>
         <button class="btn danger" id="clrFile">Reset</button>
       </div>
 
@@ -241,13 +278,15 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
     </section>
 
     <!-- ================= DOKUMENTASI ================= -->
-    <section id="docs" class="card" style="margin-top:14px">
+    <section class="card" style="margin-top:14px">
       <h2 class="sectionTitle">Dokumentasi & Cara Kerja</h2>
-
-      <h3>Keyword Cipher (Monoalphabetic Substitution)</h3>
-      <p><b>Teks:</b> Alfabet cipher = <code>KEYWORD*</code> (huruf unik) + sisa A–Z. Enkripsi: map posisi; Dekripsi: peta kebalikan (case-preserving).</p>
-      <p><b>Berkas:</b> Alfabet byte = <code>bytes(KEYWORD)*</code> (unik, UTF-8) + sisa 0..255. Enkripsi byte-per-byte; dekripsi pakai inverse map. Ukuran file tetap.</p>
-      <p class="small"><b>Catatan:</b> Ini cipher edukatif, bukan pengganti kriptografi modern (AES/ChaCha20) untuk data sensitif.</p>
+      <p><b>Keyword Cipher</b> adalah cipher substitusi monoalfabetik. Susun alfabet cipher dari
+        <b>keyword</b> (hapus huruf duplikat, konversi ke UPPERCASE), kemudian tambah sisa huruf A–Z
+        yang belum terpakai. Contoh: KEY=SECURITY → <code>SECURITYABDFGHKLMNOPQVWXZ</code>.</p>
+      <p><b>Enkripsi:</b> setiap huruf plaintext P dipetakan ke huruf cipher pada posisi indeks yang sama
+        (A→cipher[0], B→cipher[1], ...). <b>Dekripsi</b> kebalikannya menggunakan alfabet inverse.
+        Huruf kecil dipertahankan sebagai kecil; karakter non-huruf opsional dilewatkan.</p>
+      <p class="small"><b>Catatan:</b> Cipher klasik untuk edukasi. Untuk keamanan nyata gunakan AES/ChaCha20.</p>
     </section>
 
     <footer>© 2025 Crypto Lab • Keyword • Tema Prism Forge • Kontras aman & responsif.</footer>
@@ -268,95 +307,91 @@ themeBtn.onclick=()=>{
   metaScheme.setAttribute('content', light?'light dark':'dark light');
 };
 
-/* ================= UTIL (TEKS) ================= */
-const AZ='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+/* ================= CURSOR RING ================= */
+const ring=document.getElementById('cursor');
+let rx=0, ry=0, tx=0, ty=0;
+addEventListener('pointermove', e=>{ tx=e.clientX; ty=e.clientY; }, {passive:true});
+function tick(){ rx+=(tx-rx)*0.18; ry+=(ty-ry)*0.18; ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`; requestAnimationFrame(tick); }
+if(!matchMedia('(pointer: coarse)').matches){ tick(); }
+function setRingBig(on){ ring.classList.toggle('big', on); }
+document.querySelectorAll('a, .btn, .card, input, textarea, select, label, .swap-btn').forEach(el=>{
+  el.addEventListener('pointerenter', ()=>setRingBig(true));
+  el.addEventListener('pointerleave', ()=>setRingBig(false));
+});
+
+/* ================== KEYWORD CIPHER CORE ================== */
+const ALPH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 function onlyAZ(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,''); }
-function isLetter(ch){ return /^[A-Za-z]$/.test(ch); }
-
-/* ====== PETA ALFABET TEKS ====== */
-const keyTxt = document.getElementById('keyTxt');
-const mapHead = document.getElementById('mapHead');
-const mapBody = document.getElementById('mapBody');
-
-function buildCipherAlphabetText(){
-  const k = onlyAZ(keyTxt.value);
-  const seen=new Set(); let head='';
-  for(const ch of k){ if(!seen.has(ch)){ seen.add(ch); head+=ch; } }
-  for(const ch of AZ){ if(!seen.has(ch)){ seen.add(ch); head+=ch; } }
-  return head; // panjang 26
+function dedup(s){
+  const seen=new Set(); let r='';
+  for(const ch of s){ if(!seen.has(ch)){ seen.add(ch); r+=ch; } }
+  return r;
 }
-function renderMapGrid(){
-  const cipher = buildCipherAlphabetText();
-  mapHead.innerHTML = '';
-  mapBody.innerHTML = '';
-  for (let i = 0; i < 26; i++) {
-    const th = document.createElement('th'); th.textContent = AZ[i]; mapHead.appendChild(th);
-    const td = document.createElement('td'); td.textContent = cipher[i]; mapBody.appendChild(td);
+function buildCipherAlphabet(keyword){
+  const K = dedup(onlyAZ(keyword));
+  let rest = '';
+  for(const ch of ALPH){ if(!K.includes(ch)) rest += ch; }
+  return K + rest; // 26 huruf
+}
+function buildMaps(keyword){
+  const keyAlph = buildCipherAlphabet(keyword);
+  const encMap = new Map(); // plain A->Z to cipher
+  const decMap = new Map(); // cipher to plain A->Z
+  for(let i=0;i<26;i++){
+    encMap.set(ALPH[i], keyAlph[i]);
+    decMap.set(keyAlph[i], ALPH[i]);
   }
+  return {keyAlph, encMap, decMap};
 }
-keyTxt.addEventListener('input', renderMapGrid);
-renderMapGrid();
-
-/* ====== ENK/DEK TEKS ====== */
-const keepNon = document.getElementById('keepNon');
-const showSteps = document.getElementById('showSteps');
-const plainTxt = document.getElementById('plainTxt');
-const outTxt = document.getElementById('outTxt');
-const stepsWrap = document.getElementById('stepsWrap');
-const stepsTblBody = document.querySelector('#stepsTbl tbody');
-
-function makeDictText(){
-  const cipher = buildCipherAlphabetText();
-  const enc={}, dec={};
-  for(let i=0;i<26;i++){ enc[AZ[i]]=cipher[i]; dec[cipher[i]]=AZ[i]; }
-  return {enc,dec};
-}
-
-// ======= FIX: dekripsi prioritas baca dari kolom hasil (outTxt) =======
-function transform(mode /* 'enc'|'dec' */, srcOverride){
-  const K = onlyAZ(keyTxt.value);
-  if(!K){ alert('Masukkan keyword (A–Z).'); return; }
-
-  const dict = makeDictText()[mode==='enc'?'enc':'dec'];
-  const keep = keepNon.checked;
-
-  const src = (typeof srcOverride === 'string')
-    ? srcOverride
-    : (mode === 'dec'
-        ? (outTxt.value || plainTxt.value || '')
-        : (plainTxt.value || ''));
-
-  let result=''; let step=0; stepsTblBody.innerHTML='';
-
-  for(const ch of src){
+function isLetter(ch){ return /[A-Za-z]/.test(ch); }
+function mapText(s, map, keepNon=true){
+  let out=''; for(const ch of s){
     if(isLetter(ch)){
-      const up=ch.toUpperCase();
-      const mapped = dict[up];
-      const outCh = (ch===ch.toLowerCase()) ? mapped.toLowerCase() : mapped;
-      result += outCh;
-      if(showSteps.checked){
-        const tr=document.createElement('tr');
-        tr.innerHTML = `<td>${++step}</td><td>${up}</td><td>${up}→${mapped}</td><td>${mode==='enc'?'Substitusi (Plain→Cipher)':'Balik (Cipher→Plain)'}</td><td>${outCh}</td>`;
-        stepsTblBody.appendChild(tr);
-      }
+      const up = ch.toUpperCase();
+      const m = map.get(up) || up;
+      out += (ch===ch.toLowerCase()) ? m.toLowerCase() : m;
     }else{
-      if(keep) result += ch; // kalau tidak keep, non-huruf dibuang
+      if(keepNon) out += ch;
     }
   }
-  outTxt.value = result;
-  stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
+  return out;
 }
 
-/* Buttons (text) */
-document.getElementById('encTxt').onclick = ()=>transform('enc');
-document.getElementById('decTxt').onclick = ()=>transform('dec');
-document.getElementById('useOutToIn').onclick = ()=>{
-  plainTxt.value = outTxt.value || '';
-  plainTxt.focus();
-};
+/* ================== UI EL ================== */
+const keyTxt   = document.getElementById('keyTxt');
+const keepNon  = document.getElementById('keepNon');
+const plainTxt = document.getElementById('plainTxt');
+const outTxt   = document.getElementById('outTxt');
+const cipherHead = document.getElementById('cipherHead');
+const plainHead  = document.getElementById('plainHead');
+
+function renderHeads(keyword){
+  const {keyAlph} = buildMaps(keyword);
+  plainHead.textContent = ALPH.split('').join(' ');
+  cipherHead.textContent = keyAlph.split('').join(' ');
+}
+renderHeads(keyTxt.value);
+
+/* Enkripsi/Dekripsi tombol */
+function encryptText(){
+  const kw = keyTxt.value;
+  const {encMap} = buildMaps(kw);
+  if(!onlyAZ(kw)){ alert('Masukkan KEYWORD (huruf A–Z).'); return; }
+  outTxt.value = mapText(plainTxt.value||'', encMap, keepNon.checked);
+}
+function decryptText(){
+  const kw = keyTxt.value;
+  const {decMap} = buildMaps(kw);
+  if(!onlyAZ(kw)){ alert('Masukkan KEYWORD (huruf A–Z).'); return; }
+  outTxt.value = mapText(plainTxt.value||'', decMap, keepNon.checked);
+}
+
+document.getElementById('encTxt').onclick = encryptText;
+document.getElementById('decTxt').onclick = decryptText;
 document.getElementById('cleanAZ').onclick = ()=>{ plainTxt.value = onlyAZ(plainTxt.value); };
 document.getElementById('clrTxt').onclick = ()=>{
-  plainTxt.value=''; outTxt.value=''; stepsTblBody.innerHTML=''; stepsWrap.style.display='none';
+  plainTxt.value=''; outTxt.value='';
 };
 document.getElementById('copyTxt').onclick = ()=>{
   navigator.clipboard.writeText(outTxt.value||'').then(()=>{
@@ -364,76 +399,59 @@ document.getElementById('copyTxt').onclick = ()=>{
     setTimeout(()=>b.textContent=old, 900);
   });
 };
-showSteps.onchange = ()=>{ stepsWrap.style.display = showSteps.checked ? 'block' : 'none'; };
 
-/* ================= FILE MODE (BYTE-SAFE) ================= */
-const keyFileTxt = document.getElementById('keyFileTxt');
-const fileIn  = document.getElementById('fileIn');
-const prog    = document.getElementById('prog');
-const stat    = document.getElementById('stat');
+/* SWAP isi kiri ↔ kanan */
+document.getElementById('swapBtn').onclick = ()=>{
+  const tmp = plainTxt.value; plainTxt.value = outTxt.value; outTxt.value = tmp;
+  plainTxt.focus();
+};
 
-function readFileAsArrayBuffer(file){
-  return new Promise((resolve,reject)=>{
+/* Live update mapping saat keyword berubah */
+keyTxt.addEventListener('input', ()=>renderHeads(keyTxt.value));
+
+/* ================== FILE MODE (.txt) ================== */
+const fileIn = document.getElementById('fileIn');
+const prog   = document.getElementById('prog');
+const stat   = document.getElementById('stat');
+
+function downloadText(content, name){
+  const blob=new Blob([content], {type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+async function readFileText(file){
+  return new Promise((res,rej)=>{
     const fr=new FileReader();
-    fr.onerror = ()=>reject(fr.error);
-    fr.onload  = ()=>resolve(fr.result);
-    fr.readAsArrayBuffer(file);
+    fr.onerror = ()=>rej(fr.error);
+    fr.onload  = ()=>res(fr.result);
+    fr.readAsText(file, 'utf-8');
   });
 }
-
-/* Build byte permutation from keyword (UTF-8) */
-function buildCipherAlphabetBytes(keyStr){
-  const keyBytes = new TextEncoder().encode(keyStr || '');
-  const seen = new Array(256).fill(false);
-  const cipher = new Uint8Array(256); let idx=0;
-  for(const b of keyBytes){ if(!seen[b]){ seen[b]=true; cipher[idx++]=b; } }
-  for(let b=0;b<256;b++){ if(!seen[b]) cipher[idx++]=b; }
-  const inv = new Uint8Array(256);
-  for(let i=0;i<256;i++){ inv[cipher[i]] = i; }
-  return {cipher, inv};
-}
-
-function processBytesKeyword(buf, keyStr, mode /* 'enc'|'dec' */){
-  const {cipher, inv} = buildCipherAlphabetBytes(keyStr);
-  const src = new Uint8Array(buf);
-  const dst = new Uint8Array(src.length);
-  if(mode==='enc'){
-    for(let i=0;i<src.length;i++){
-      dst[i] = cipher[src[i]];
-      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
-    }
-  }else{
-    for(let i=0;i<src.length;i++){
-      dst[i] = inv[src[i]];
-      if((i & 0x3fff)===0){ prog.value = Math.round(i/src.length*100); }
-    }
-  }
-  prog.value = 100;
-  return dst;
-}
-
-function downloadBytes(bytes, name){
-  const blob = new Blob([bytes], {type:'application/octet-stream'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = name;
-  document.body.appendChild(a); a.click();
-  a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
-}
-
-async function handleFile(mode){
+async function handleFile(mode /* 'enc' | 'dec' */){
   const f = fileIn.files?.[0];
-  if(!f){ alert('Pilih berkas terlebih dahulu.'); return; }
-  const keyStr = String(keyFileTxt.value||'');
-  if(!keyStr.length){ alert('Masukkan keyword untuk berkas.'); return; }
+  const kw = keyTxt.value;
+  if(!f){ alert('Pilih berkas .txt terlebih dahulu.'); return; }
+  if(!onlyAZ(kw)){ alert('Masukkan KEYWORD (huruf A–Z).'); return; }
+  const maps = buildMaps(kw);
+  const map = mode==='enc' ? maps.encMap : maps.decMap;
 
-  prog.value = 0; stat.textContent = (mode==='enc'?'Enkripsi':'Dekripsi')+' berjalan…';
+  prog.value=0; stat.textContent=(mode==='enc'?'Enkripsi':'Dekripsi')+' berjalan…';
   try{
-    const buf = await readFileAsArrayBuffer(f);
-    const out = processBytesKeyword(buf, keyStr, mode);
-    const suffix = mode==='enc' ? '.keyword.enc' : '.keyword.dec';
-    const name = (f.name||'file') + suffix;
-    downloadBytes(out, name);
+    const text = await readFileText(f);
+    const n = text.length;
+    let out = '';
+    const CHUNK = 8192;
+    for(let i=0;i<n;i+=CHUNK){
+      const part = text.slice(i, i+CHUNK);
+      out += mapText(part, map, true);
+      if((i & 0x3fff)===0){ prog.value = Math.round((i/n)*100); }
+    }
+    prog.value=100;
+    const suffix = mode==='enc'?'.kw.enc.txt':'.kw.dec.txt';
+    const name = (f.name||'file.txt') + suffix;
+    downloadText(out, name);
     stat.textContent = 'Selesai: '+name;
   }catch(err){
     console.error(err);
@@ -443,9 +461,7 @@ async function handleFile(mode){
 }
 document.getElementById('encFile').onclick = ()=>handleFile('enc');
 document.getElementById('decFile').onclick = ()=>handleFile('dec');
-document.getElementById('clrFile').onclick = ()=>{
-  fileIn.value=''; prog.value=0; stat.textContent='';
-};
+document.getElementById('clrFile').onclick = ()=>{ fileIn.value=''; prog.value=0; stat.textContent=''; };
 
 /* ================= SHORTCUTS ================= */
 addEventListener('keydown',(e)=>{
@@ -453,7 +469,6 @@ addEventListener('keydown',(e)=>{
   const k=e.key.toLowerCase();
   if(k==='i') location.href='index.html';
   if(k==='a') location.href='autokey.html';
-  if(k==='k') location.href='keyword.html';
 });
 </script>
 </body>
