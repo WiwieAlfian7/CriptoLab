@@ -130,7 +130,7 @@ progress::-webkit-progress-value{background:linear-gradient(90deg, var(--p2), #6
 /* tabel langkah */
 .tableWrap{overflow:auto; border:1px solid var(--border); border-radius:12px; background:var(--glass); margin-top:10px}
 table{width:100%; border-collapse:collapse; font-size:.95rem}
-th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left}
+th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap}
 tr:nth-child(even){background-color:#ffffff08}
 .light tr:nth-child(even){background-color:#00000006}
 
@@ -228,7 +228,18 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
       <div id="stepsWrap" class="tableWrap" style="display:none">
         <table id="stepsTbl">
           <thead>
-            <tr><th>#</th><th>P[i]</th><th>Keystream[i]</th><th>Shift</th><th>Operasi</th><th>Hasil</th></tr>
+            <tr>
+              <th>#</th>
+              <th>P[i]</th>
+              <th>C[i]</th>
+              <th>Keystream[i]</th>
+              <th>P#</th>
+              <th>C#</th>
+              <th>K#</th>
+              <th>Shift</th>
+              <th>Operasi</th>
+              <th>Hasil</th>
+            </tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -345,13 +356,25 @@ function encryptText(){
     if(isLetter(ch)){
       const p=A(ch.toUpperCase());
       const keyCh = (letterIdx < KL) ? KEY[letterIdx] : seenPlain[letterIdx-KL];
-      const k=A(keyCh); const c=(p+k)%26;
+      const k=A(keyCh);
+      const c=(p+k)%26;
       const outCh=(ch===ch.toLowerCase())?Z(c).toLowerCase():Z(c);
       result+=outCh; seenPlain.push(Z(p)); letterIdx++;
 
       if(showSteps.checked){
         stepsTblBody.insertAdjacentHTML('beforeend',
-          `<tr><td>${letterIdx}</td><td>${Z(p)}</td><td>${keyCh}</td><td>+${k}</td><td>(P+K) mod 26</td><td>${Z(c)}</td></tr>`);
+          `<tr>
+            <td>${letterIdx}</td>
+            <td>${Z(p)}</td>
+            <td>${Z(c)}</td>
+            <td>${keyCh}</td>
+            <td>${p}</td>
+            <td>${c}</td>
+            <td>${k}</td>
+            <td>+${k}</td>
+            <td>(P+K) mod 26</td>
+            <td>${Z(c)}</td>
+          </tr>`);
       }
     }else{
       if(keep) result+=ch; // lewati spasi/tanda baca tanpa menggeser keystream
@@ -374,15 +397,27 @@ function decryptText(){
 
   for(const ch of src){
     if(isLetter(ch)){
-      const c=A(ch.toUpperCase());
+      const c=A(ch.toUpperCase()); // ciphertext saat ini
       const keyCh=(letterIdx<KL)?KEY[letterIdx]:recovered[letterIdx-KL];
-      const k=A(keyCh); const p=(c-k+26)%26;
+      const k=A(keyCh);
+      const p=(c-k+26)%26; // plaintext yang dipulihkan
       const outCh=(ch===ch.toLowerCase())?Z(p).toLowerCase():Z(p);
       result+=outCh; recovered.push(Z(p)); letterIdx++;
 
       if(showSteps.checked){
         stepsTblBody.insertAdjacentHTML('beforeend',
-          `<tr><td>${letterIdx}</td><td>${Z(p)}</td><td>${keyCh}</td><td>−${k}</td><td>(C−K) mod 26</td><td>${Z(p)}</td></tr>`);
+          `<tr>
+            <td>${letterIdx}</td>
+            <td>${Z(p)}</td>
+            <td>${Z(c)}</td>
+            <td>${keyCh}</td>
+            <td>${p}</td>
+            <td>${c}</td>
+            <td>${k}</td>
+            <td>−${k}</td>
+            <td>(C−K) mod 26</td>
+            <td>${Z(p)}</td>
+          </tr>`);
       }
     }else{
       if(keep) result+=ch;
