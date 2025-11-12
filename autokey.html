@@ -136,7 +136,7 @@ tr:nth-child(even){background-color:#ffffff08}
 
 footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95rem}
 
-/* ======= SWAP BUTTON (tengah di antara 2 textarea) ======= */
+/* ======= SWAP BUTTON ======= */
 .swap-wrap{position:relative}
 .swap-btn{
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
@@ -215,7 +215,7 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
           </div>
         </div>
 
-        <!-- Tombol tukar isi (ikon swap SVG) -->
+        <!-- Tombol tukar isi -->
         <button id="swapBtn" class="swap-btn" title="Tukar isi (hasil ↔ pesan)" aria-label="Tukar isi">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -225,21 +225,26 @@ footer{margin:40px 0 12px; text-align:center; color:var(--muted); font-size:.95r
         </button>
       </div>
 
-      <div id="stepsWrap" class="tableWrap" style="display:none">
-        <table id="stepsTbl">
+      <!-- ====== TABEL ALFABET (0 = A) — DI ATAS TABEL LANGKAH ====== -->
+      <h3 id="alphaTitle" class="sectionTitle">TABEL ALFABET (0 = A)</h3>
+      <div id="alphaWrap" class="tableWrap" style="display:none; margin-top:8px">
+        <table id="alphaTbl" aria-describedby="alphaTitle">
           <thead>
-            <tr>
-              <th>#</th>
-              <th>P[i]</th>
-              <th>C[i]</th>
-              <th>Keystream[i]</th>
-              <th>P#</th>
-              <th>C#</th>
-              <th>K#</th>
-              <th>Shift</th>
-              <th>Operasi</th>
-              <th>Hasil</th>
-            </tr>
+            <tr id="alphaNums"></tr>
+          </thead>
+          <tbody>
+            <tr id="alphaChars"></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ====== TABEL LANGKAH (Dinamis: ENKRIPSI/DEKRIPSI) ====== -->
+      <h3 id="stepsTitle" class="sectionTitle">TABEL LANGKAH</h3>
+      <div id="stepsWrap" class="tableWrap" style="display:none">
+        <table id="stepsTbl" aria-describedby="stepsTitle">
+          <thead>
+            <!-- header akan di-set via JS -->
+            <tr><th>#</th><th>P[i]</th><th>P#</th><th>C[i]</th><th>C#</th><th>K[i]</th><th>K#</th><th>Operasi</th><th>Nilai</th><th>HASIL</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -333,7 +338,13 @@ const keepNon = document.getElementById('keepNon');
 const showSteps = document.getElementById('showSteps');
 const plainTxt = document.getElementById('plainTxt');
 const outTxt = document.getElementById('outTxt');
+
+const alphaWrap = document.getElementById('alphaWrap');
+const alphaNums = document.getElementById('alphaNums');
+const alphaChars = document.getElementById('alphaChars');
 const stepsWrap = document.getElementById('stepsWrap');
+const stepsTitle = document.getElementById('stepsTitle');
+const stepsTblHead = document.querySelector('#stepsTbl thead');
 const stepsTblBody = document.querySelector('#stepsTbl tbody');
 
 function onlyAZ(s){ return (s||'').toUpperCase().replace(/[^A-Z]/g,''); }
@@ -341,7 +352,44 @@ function isLetter(ch){ return /^[A-Za-z]$/.test(ch); }
 function A(ch){ return ch.charCodeAt(0)-65; }
 function Z(i){ return String.fromCharCode((i%26+26)%26 + 65); }
 
-/* Enkripsi: KEY lalu plaintext huruf (spasi tak dihitung) */
+/* Headers & alphabet */
+function setStepsHeaderEncrypt(){
+  stepsTitle.textContent = 'TABEL LANGKAH — ENKRIPSI';
+  stepsTblHead.innerHTML = `<tr>
+    <th>#</th>
+    <th>P[i]</th>
+    <th>P#</th>
+    <th>C[i]</th>
+    <th>C#</th>
+    <th>K[i]</th>
+    <th>K#</th>
+    <th>Operasi</th>
+    <th>Nilai Cipher</th>
+    <th>HASIL</th>
+  </tr>`;
+}
+function setStepsHeaderDecrypt(){
+  stepsTitle.textContent = 'TABEL LANGKAH — DEKRIPSI';
+  stepsTblHead.innerHTML = `<tr>
+    <th>#</th>
+    <th>P[i]</th>
+    <th>P#</th>
+    <th>C[i]</th>
+    <th>C#</th>
+    <th>K[i]</th>
+    <th>K#</th>
+    <th>Operasi</th>
+    <th>Nilai Plain Teks</th>
+    <th>HASIL</th>
+  </tr>`;
+}
+function renderAlphabetTable(){
+  if(!alphaNums || !alphaChars) return;
+  alphaNums.innerHTML = Array.from({length:26}, (_,i)=>`<th>${i}</th>`).join('');
+  alphaChars.innerHTML = Array.from({length:26}, (_,i)=>`<td>${String.fromCharCode(65+i)}</td>`).join(''); // A..Z
+}
+
+/* Enkripsi */
 function encryptText(){
   const K = onlyAZ(keyTxt.value);
   if(!K){ alert('Masukkan kunci huruf (A–Z).'); return; }
@@ -349,8 +397,8 @@ function encryptText(){
   const keep = keepNon.checked;
 
   let result=''; const KEY=K.toUpperCase(); const KL=KEY.length;
-  let letterIdx=0; const seenPlain=[]; // huruf plaintext yang sudah diproses (A–Z)
-  stepsTblBody.innerHTML='';
+  let letterIdx=0; const seenPlain=[]; // plaintext huruf yang sudah diproses
+  stepsTblBody.innerHTML=''; setStepsHeaderEncrypt();
 
   for(const ch of src){
     if(isLetter(ch)){
@@ -366,25 +414,26 @@ function encryptText(){
           `<tr>
             <td>${letterIdx}</td>
             <td>${Z(p)}</td>
-            <td>${Z(c)}</td>
-            <td>${keyCh}</td>
             <td>${p}</td>
+            <td>${Z(c)}</td>
             <td>${c}</td>
+            <td>${keyCh}</td>
             <td>${k}</td>
-            <td>+${k}</td>
             <td>(P+K) mod 26</td>
+            <td>${c}</td>
             <td>${Z(c)}</td>
           </tr>`);
       }
     }else{
-      if(keep) result+=ch; // lewati spasi/tanda baca tanpa menggeser keystream
+      if(keep) result+=ch; // spasi/tanda baca dipertahankan
     }
   }
   outTxt.value=result;
-  stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
+  const show = showSteps.checked ? 'block' : 'none';
+  stepsWrap.style.display = show; alphaWrap.style.display = show;
 }
 
-/* Dekripsi: KEY lalu plaintext yang baru dipulihkan (huruf saja) */
+/* Dekripsi */
 function decryptText(){
   const K = onlyAZ(keyTxt.value);
   if(!K){ alert('Masukkan kunci huruf (A–Z).'); return; }
@@ -392,15 +441,15 @@ function decryptText(){
   const keep = keepNon.checked;
 
   let result=''; const KEY=K.toUpperCase(); const KL=KEY.length;
-  let letterIdx=0; const recovered=[]; // huruf plaintext yang sudah dipulihkan
-  stepsTblBody.innerHTML='';
+  let letterIdx=0; const recovered=[]; // plaintext huruf yang dipulihkan
+  stepsTblBody.innerHTML=''; setStepsHeaderDecrypt();
 
   for(const ch of src){
     if(isLetter(ch)){
-      const c=A(ch.toUpperCase()); // ciphertext saat ini
+      const c=A(ch.toUpperCase());
       const keyCh=(letterIdx<KL)?KEY[letterIdx]:recovered[letterIdx-KL];
       const k=A(keyCh);
-      const p=(c-k+26)%26; // plaintext yang dipulihkan
+      const p=(c-k+26)%26;
       const outCh=(ch===ch.toLowerCase())?Z(p).toLowerCase():Z(p);
       result+=outCh; recovered.push(Z(p)); letterIdx++;
 
@@ -409,13 +458,13 @@ function decryptText(){
           `<tr>
             <td>${letterIdx}</td>
             <td>${Z(p)}</td>
-            <td>${Z(c)}</td>
-            <td>${keyCh}</td>
             <td>${p}</td>
+            <td>${Z(c)}</td>
             <td>${c}</td>
+            <td>${keyCh}</td>
             <td>${k}</td>
-            <td>−${k}</td>
             <td>(C−K) mod 26</td>
+            <td>${p}</td>
             <td>${Z(p)}</td>
           </tr>`);
       }
@@ -424,7 +473,8 @@ function decryptText(){
     }
   }
   outTxt.value=result;
-  stepsWrap.style.display = showSteps.checked ? 'block' : 'none';
+  const show = showSteps.checked ? 'block' : 'none';
+  stepsWrap.style.display = show; alphaWrap.style.display = show;
 }
 
 /* Buttons (text) */
@@ -432,7 +482,7 @@ document.getElementById('encTxt').onclick = encryptText;
 document.getElementById('decTxt').onclick = decryptText;
 document.getElementById('cleanAZ').onclick = ()=>{ plainTxt.value = onlyAZ(plainTxt.value); };
 document.getElementById('clrTxt').onclick = ()=>{
-  plainTxt.value=''; outTxt.value=''; stepsTblBody.innerHTML=''; stepsWrap.style.display='none';
+  plainTxt.value=''; outTxt.value=''; stepsTblBody.innerHTML=''; stepsWrap.style.display='none'; alphaWrap.style.display='none';
 };
 document.getElementById('copyTxt').onclick = ()=>{ navigator.clipboard.writeText(outTxt.value||''); };
 
@@ -442,7 +492,10 @@ document.getElementById('swapBtn').onclick = ()=>{
   plainTxt.focus();
 };
 
-showSteps.onchange = ()=>{ stepsWrap.style.display = showSteps.checked ? 'block' : 'none'; };
+showSteps.onchange = ()=>{
+  const show = showSteps.checked ? 'block' : 'none';
+  stepsWrap.style.display = show; alphaWrap.style.display = show;
+};
 
 /* ================== AUTOKEY (BERKAS / BYTE) ================== */
 const keyFile = document.getElementById('keyFile');
@@ -514,6 +567,9 @@ async function handleFile(mode){
 document.getElementById('encFile').onclick = ()=>handleFile('enc');
 document.getElementById('decFile').onclick = ()=>handleFile('dec');
 document.getElementById('clrFile').onclick = ()=>{ fileIn.value=''; prog.value=0; stat.textContent=''; };
+
+/* Render tabel alfabet saat load */
+renderAlphabetTable();
 
 /* ================= SHORTCUTS ================= */
 addEventListener('keydown',(e)=>{
